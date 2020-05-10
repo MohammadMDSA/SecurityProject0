@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
@@ -16,16 +17,16 @@ namespace SecurityProject0_server
         public bool IsRunning { get; private set; }
         public string Name { get; set; }
 
-        private Queue<string> SendQueue;
-        private Queue<string> ReceiveQueue;
+        private ConcurrentQueue<string> SendQueue;
+        private ConcurrentQueue<string> ReceiveQueue;
         private NetworkStream Stream;
         private TcpClient SocketClient;
 
         public Client(TcpClient client, NetworkStream stream, int id)
         {
             this.Stream = stream;
-            this.SendQueue = new Queue<string>();
-            this.ReceiveQueue = new Queue<string>();
+            this.SendQueue = new ConcurrentQueue<string>();
+            this.ReceiveQueue = new ConcurrentQueue<string>();
             this.SocketClient = client;
             Task.Run(Run);
             Task.Run(ProcessIO);
@@ -33,7 +34,6 @@ namespace SecurityProject0_server
 
         public void Run()
         {
-            IsRunning = true;
             int i;
             string data = null;
             byte[] bytes = new byte[256];
@@ -44,9 +44,7 @@ namespace SecurityProject0_server
                 {
                     // Translate data bytes to a ASCII string.
                     data = System.Text.Encoding.Unicode.GetString(bytes, 0, i);
-                    Console.WriteLine("{0}@Received: {1}", Id, data);
                     ReceiveQueue.Enqueue(data);
-                    //OnIncommeingMessage?.Invoke(data, Id);
                 }
             }
             catch (Exception)
@@ -60,6 +58,7 @@ namespace SecurityProject0_server
 
         public void ProcessIO()
         {
+            IsRunning = true;
             try
             {
 
@@ -69,7 +68,7 @@ namespace SecurityProject0_server
                     {
                         while (SendQueue.Count > 0)
                         {
-                            var msg = SendQueue.Dequeue();
+                            SendQueue.TryDequeue(out var msg);
                             var bs = System.Text.Encoding.Unicode.GetBytes(msg);
                             Stream.Write(bs, 0, bs.Length);
                             Console.WriteLine("{0}@Sent: {1}", Id, msg);
@@ -78,6 +77,15 @@ namespace SecurityProject0_server
                     else
                     {
                         Task.Delay(100);
+                    }
+                    if(ReceiveQueue.Count > 0)
+                    {
+                        while (ReceiveQueue.Count > 0)
+                        {
+                            ReceiveQueue.TryDequeue(out var msg);
+                            OnIncommeingMessage?.Invoke(msg, Id);
+                            Console.WriteLine("{0}@Received: {1}", Id, msg);
+                        }
                     }
 
                 }
