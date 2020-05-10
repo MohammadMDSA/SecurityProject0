@@ -1,86 +1,136 @@
-﻿using System;
+﻿using SecurityProject0_shared.Models;
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 
 namespace SecurityProject0_client.Core.Services
 {
-    public static class MessageSender
+    public class MessageSender : IDisposable
     {
 
-        private static Queue<string> SendQueue;
-        private static TcpClient Client;
-        private static Stream Stream;
+        public delegate void MessageHandler(string message);
 
-        static MessageSender()
+        public static event MessageHandler OnIncommeingMessage;
+
+        public static MessageSender Instance { get; private set; }
+
+        private ConcurrentQueue<string> SendQueue;
+        private ConcurrentQueue<string> ReceiveQueue;
+        private bool IsRunning;
+        private TcpClient Client;
+        private Stream Stream;
+
+        public MessageSender()
         {
-            SendQueue = new Queue<string>();
+            if (Instance != null)
+                Instance.Dispose();
+            Instance = this;
+            SendQueue = new ConcurrentQueue<string>();
+            ReceiveQueue = new ConcurrentQueue<string>();
+            IsRunning = false;
         }
 
-        public static void Connect(String server, String message)
+        public void Connect(string server, string message, int port = 13000)
         {
             try
             {
-                // Create a TcpClient.
-                // Note, for this client to work you need to have a TcpServer
-                // connected to the same address as specified by the server, port
-                // combination.
-                Int32 port = 13000;
+
                 Client = new TcpClient(server, port);
 
-                // Translate the passed message into ASCII and store it as a Byte array.
-                Byte[] data = System.Text.Encoding.Unicode.GetBytes(message);
+                byte[] data = Encoding.Unicode.GetBytes(message);
 
-                // Get a client stream for reading and writing.
-                //  Stream stream = client.GetStream();
 
                 Stream = Client.GetStream();
 
-                //data = SerializeObject(new )
-
-                // Send the message to the connected TcpServer.
-                Stream.Write(data, 0, data.Length);
-
-                Console.WriteLine("Sent: {0}", message);
-
-                // Receive the TcpServer.response.
-
-                // Buffer to store the response bytes.
-                data = new Byte[256];
-
-                // String to store the response ASCII representation.
-                String responseData = String.Empty;
-
-                // Read the first batch of the TcpServer response bytes.
-                Int32 bytes = Stream.Read(data, 0, data.Length);
-                responseData = System.Text.Encoding.Unicode.GetString(data, 0, bytes);
-                Console.WriteLine("Received: {0}", responseData);
-
-                // Close everything.
-                Stream.Close();
-                Client.Close();
+                Task.Run(ListenToServer);
+                Task.Run(ProcessIO);
             }
-            catch (ArgumentNullException e)
+            catch (Exception)
             {
-                Console.WriteLine("ArgumentNullException: {0}", e);
-            }
-            catch (SocketException e)
-            {
-                Console.WriteLine("SocketException: {0}", e);
             }
 
-            Console.WriteLine("\n Press Enter to continue...");
-            Console.Read();
         }
 
+        private void ListenToServer()
+        {
+            int i = 0;
+            string data = null;
+            byte[] bytes = new byte[256];
 
-        public static void SendMessage(string msg)
+            try
+            {
+                while ((i = Stream.Read(bytes, 0, bytes.Length)) != 0)
+                {
+                    data = Encoding.Unicode.GetString(bytes, 0, i);
+                    ReceiveQueue.Enqueue(data);
+                }
+            }
+            catch (Exception)
+            {
+            }
+            finally
+            {
+                IsRunning = false;
+            }
+        }
+
+        public void ProcessIO()
+        {
+            IsRunning = true;
+            try
+            {
+
+                while (IsRunning)
+                {
+                    if (SendQueue.Count > 0)
+                    {
+                        while (SendQueue.Count > 0)
+                        {
+                            SendQueue.TryDequeue(out var msg);
+                            var bs = System.Text.Encoding.Unicode.GetBytes(msg);
+                            Stream.Write(bs, 0, bs.Length);
+                            Console.WriteLine("{Sent: {0}", msg);
+                        }
+                    }
+                    else
+                    {
+                        Task.Delay(100);
+                    }
+                    if (ReceiveQueue.Count > 0)
+                    {
+                        while (ReceiveQueue.Count > 0)
+                        {
+                            ReceiveQueue.TryDequeue(out var msg);
+                            OnIncommeingMessage?.Invoke(msg);
+                            Console.WriteLine("Received: {0}", msg);
+                        }
+                    }
+
+                }
+            }
+            catch (Exception) { }
+            finally
+            {
+                IsRunning = false;
+            }
+        }
+
+        public void SendMessage(string msg)
         {
             SendQueue.Enqueue(msg);
         }
 
+        public void Dispose()
+        {
+            Stream.Close();
+            Client.Dispose();
+            IsRunning = false;
+        }
     }
 }
