@@ -17,7 +17,7 @@ namespace SecurityProject0_shared.Models
             {
                 if (!IsDecrypted)
                     Decrypt();
-                return _rawMessage;
+                return _rawMessage ?? "";
             }
         }
         public bool IsDecrypted { get; private set; }
@@ -31,5 +31,11 @@ namespace SecurityProject0_shared.Models
         {
             IsDecrypted = true;
         }
+
+        public override string ToString()
+        {
+            return RawMessage;
+        }
+
     }
 }

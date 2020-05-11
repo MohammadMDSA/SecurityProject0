@@ -48,6 +48,7 @@ namespace SecurityProject0_client.Core.Services
 
 
                 Stream = Client.GetStream();
+                Stream.ReadTimeout = 100;
 
                 Task.Run(ListenToServer);
                 Task.Run(ProcessIO);
@@ -68,10 +69,29 @@ namespace SecurityProject0_client.Core.Services
 
             try
             {
-                while ((i = Stream.Read(bytes, 0, bytes.Length)) != 0)
+                while (IsRunning)
                 {
-                    data = Encoding.Unicode.GetString(bytes, 0, i);
-                    ReceiveQueue.Enqueue(data);
+                    try
+                    {
+                        Console.WriteLine(Stream.CanRead);
+                        while ((i = Stream.Read(bytes, 0, bytes.Length)) != 0)
+                        {
+                            data = Encoding.Unicode.GetString(bytes, 0, i);
+                            ReceiveQueue.Enqueue(data);
+                        }
+
+
+                    }
+                    catch (IOException)
+                    {
+                    }
+                    while (SendQueue.Count > 0)
+                    {
+                        SendQueue.TryDequeue(out var msg);
+                        var bs = System.Text.Encoding.Unicode.GetBytes(msg);
+                        Stream.Write(bs, 0, bs.Length);
+                        Stream.Flush();
+                    }
                 }
             }
             catch (Exception)
@@ -83,28 +103,17 @@ namespace SecurityProject0_client.Core.Services
             }
         }
 
+
+
         public void ProcessIO()
         {
             IsRunning = true;
-            try
+            while (IsRunning)
             {
+                try
 
-                while (IsRunning)
                 {
-                    if (SendQueue.Count > 0)
-                    {
-                        while (SendQueue.Count > 0)
-                        {
-                            SendQueue.TryDequeue(out var msg);
-                            var bs = System.Text.Encoding.Unicode.GetBytes(msg);
-                            Stream.Write(bs, 0, bs.Length);
-                            Console.WriteLine("{Sent: {0}", msg);
-                        }
-                    }
-                    else
-                    {
-                        Task.Delay(100);
-                    }
+
                     if (ReceiveQueue.Count > 0)
                     {
                         while (ReceiveQueue.Count > 0)
@@ -116,11 +125,7 @@ namespace SecurityProject0_client.Core.Services
                     }
 
                 }
-            }
-            catch (Exception) { }
-            finally
-            {
-                IsRunning = false;
+                catch (Exception) { }
             }
         }
 

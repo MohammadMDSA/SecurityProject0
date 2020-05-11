@@ -4,25 +4,60 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:con="using:SecurityProject0_client.Views.Controls"
+    xmlns:help="using:SecurityProject0_client.Helpers"
+    xmlns:con="using:SecurityProject0_client.Controls"
     mc:Ignorable="d"
     d:DesignHeight="300"
     d:DesignWidth="400">
+    <UserControl.Resources>
+        <help:DateTimeConverter x:Key="MessageDateConverter"/>
+    </UserControl.Resources>
     <RelativePanel>
-        <ScrollViewer RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignRightWithPanel="True" RelativePanel.Above="InputHolderPane" RelativePanel.AlignTopWithPanel="True">
-            <ListView>
+        <Grid x:Name="Info" Padding="10" Background="{StaticResource SystemControlPageBackgroundChromeLowBrush}" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignLeftWithPanel="true" RelativePanel.AlignTopWithPanel="True">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="auto"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Border CornerRadius="55" VerticalAlignment="Center" Grid.RowSpan="2" Grid.Column="0" Background="{StaticResource SystemControlPageBackgroundChromeMediumLowBrush}">
+                    <FontIcon
+                        VerticalAlignment="Center"
+                        FontSize="60"
+                        Glyph="&#xE13D;">
+                    </FontIcon>
+                </Border>
+
+                <TextBlock Margin="15,0,15,5" Grid.Row="0" FontSize="23" Grid.Column="1" HorizontalAlignment="Stretch" Text="{x:Bind MasterMenuItem.Name, Mode=OneWay}"/>
+                <RelativePanel Grid.Column="1" Grid.Row="1">
+                    <TextBox RelativePanel.AlignTopWithPanel="True" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignBottomWithPanel="True" RelativePanel.LeftOf="SubmitKey"  x:Name="ContactPhisical" PlaceholderText="Physical Key" HorizontalAlignment="Stretch" Margin="15,5,5,0" TextWrapping="NoWrap"/>
+                    <Button x:Name="SubmitKey" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignBottomWithPanel="True" CornerRadius="5" Click="SubmitKey_Click">
+                        <SymbolIcon Symbol="Accept"/>
+                    </Button>
+                </RelativePanel>
+            </Grid>
+        </Grid>
+        <ScrollViewer x:Name="ChatViewScroller" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignRightWithPanel="True" RelativePanel.Above="InputHolderPane" RelativePanel.Below="Info">
+            <ListView ItemsSource="{x:Bind MasterMenuItem.Messages, Mode=OneWay}" SelectionMode="None">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    </Style>
+                </ListView.ItemContainerStyle>
                 <ListView.ItemTemplate>
                     <DataTemplate>
-                        <con:ChatMessageControl Text="{Binding RawMessage}" Date="{Binding DeliveryTime}">
-                            
-                        </con:ChatMessageControl>
+                        <con:ChatMessage Message="{Binding}"/>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
         </ScrollViewer>
         <RelativePanel Margin="5" x:Name="InputHolderPane" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignBottomWithPanel="True">
             <TextBox x:Name="MessageInput" RelativePanel.AlignLeftWithPanel="True" RelativePanel.LeftOf="SendButton" RelativePanel.AlignBottomWithPanel="True" RelativePanel.AlignTopWithPanel="True" KeyUp="TextBox_KeyUp" />
-            <Button Margin="5,0,0,0" x:Name="SendButton" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignBottomWithPanel="True" RelativePanel.AlignTopWithPanel="True" VerticalAlignment="Stretch">
+            <Button Margin="5,0,0,0" x:Name="SendButton" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignBottomWithPanel="True" RelativePanel.AlignTopWithPanel="True" VerticalAlignment="Stretch" Click="SendButton_Click">
                 <SymbolIcon Symbol="Send" Foreground="Gray"/>
             </Button>
         </RelativePanel>

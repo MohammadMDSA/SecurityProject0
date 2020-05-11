@@ -27,6 +27,17 @@ namespace SecurityProject0_client
             // Deferred execution until used. Check https://msdn.microsoft.com/library/dd642331(v=vs.110).aspx for further info on Lazy<T> class.
             _activationService = new Lazy<ActivationService>(CreateActivationService);
             IdentityService.LoggedOut += OnLoggedOut;
+            Application.Current.Suspending += Current_Suspending;
+            MessageSender.OnIncommeingMessage += SecurityProject0_client.Core.Services.MessageParser.Parse;
+
+        }
+
+        private async void Current_Suspending(object sender, Windows.ApplicationModel.SuspendingEventArgs e)
+        {
+            var def = e.SuspendingOperation.GetDeferral();
+            await System.Threading.Tasks.Task.Run(() => { MessageSender.Instance.SendMessage("disconnect"); });
+            def.Complete();
+
         }
 
         protected override async void OnLaunched(LaunchActivatedEventArgs args)
@@ -57,5 +68,6 @@ namespace SecurityProject0_client
             ActivationService.SetShell(new Lazy<UIElement>(CreateShell));
             await ActivationService.RedirectLoginPageAsync();
         }
+
     }
 }

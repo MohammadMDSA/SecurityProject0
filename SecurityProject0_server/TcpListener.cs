@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 
 namespace SecurityProject0_server
@@ -11,6 +12,7 @@ namespace SecurityProject0_server
         public static TcpListener Instance { get; private set; }
 
         private Dictionary<int, Client> Clients;
+        private short IdCounter;
         public bool IsRunning { get; private set; }
 
         public TcpListener()
@@ -18,7 +20,7 @@ namespace SecurityProject0_server
             if (Instance != null)
                 Instance.Dispose();
             Instance = this;
-
+            IdCounter = 0;
             Clients = new Dictionary<int, Client>();
             IsRunning = true;
         }
@@ -45,20 +47,21 @@ namespace SecurityProject0_server
                 // Enter the listening loop.
                 while (IsRunning)
                 {
-                    Console.Write("Waiting for a connection... ");
 
                     // Perform a blocking call to accept requests.
                     // You could also use server.AcceptSocket() here.
                     TcpClient client = server.AcceptTcpClient();
-                    Console.WriteLine("Connected!");
 
 
                     // Get a stream object for reading and writing
                     NetworkStream stream = client.GetStream();
-                    int id = Clients.Count;
+                    int id = IdCounter;
+                    IdCounter++;
                     var c = new Client(client, stream, id);
                     c.OnIncommeingMessage += Parser;
+                    c.OnDisconnect += OnClientDiconnect;
                     Clients.Add(id, c);
+                    c.Send("id@" + id);
 
                     //int i;
 
@@ -102,6 +105,23 @@ namespace SecurityProject0_server
             Console.Read();
         }
 
+        private void OnClientDiconnect(object sender, EventArgs e)
+        {
+            Disconnect((sender as Client).Id);
+        }
+
+        private void Disconnect(int id)
+        {
+            Clients[id].Dispose();
+            Clients.Remove(id);
+            foreach (var item in Clients)
+            {
+                item.Value.Send("remove@" + id);
+            }
+            Console.WriteLine($"{id} Disconnected");
+
+        }
+
         private void Parser(string message, int id)
         {
             if (message == null || message == "")
@@ -114,9 +134,29 @@ namespace SecurityProject0_server
                         return;
                     InitClient(id, splited[1]);
                     break;
+                case "disconnect":
+                    Disconnect(id);
+                    break;
+
+                case "message":
+                    if (splited.Length < 4)
+                        return;
+                    if (!int.TryParse(splited[1], out var receiver) || !long.TryParse(splited[3], out var ticks))
+                        return;
+                    SendMessage(receiver, id, splited[2], ticks);
+                    break;
                 default:
                     break;
             }
+        }
+
+        private void SendMessage(int receiver, int sender, string message, long time)
+        {
+            var ren = Clients[sender];
+            var res = Clients[receiver];
+            var msg = $"message@{receiver}@{sender}@{message}@{time}";
+            ren.Send(msg);
+            res.Send(msg);
         }
 
         private void InitClient(int id, string name)
@@ -128,7 +168,10 @@ namespace SecurityProject0_server
             foreach (var item in Clients)
             {
                 if (item.Key != id)
+                {
                     cl.Send($"user@{item.Key}@{item.Value.Name}");
+                    item.Value.Send($"user@{id}@{name}");
+                }
             }
         }
 
