@@ -28,6 +28,7 @@ namespace SecurityProject0_server
             this.SendQueue = new ConcurrentQueue<string>();
             this.ReceiveQueue = new ConcurrentQueue<string>();
             this.SocketClient = client;
+            this.Id = id;
             Task.Run(Run);
             Task.Run(ProcessIO);
         }

@@ -1,4 +1,5 @@
-﻿using SecurityProject0_shared.Models;
+﻿using SecurityProject0_client.Helpers;
+using SecurityProject0_shared.Models;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -25,8 +26,9 @@ namespace SecurityProject0_client.Core.Services
         private bool IsRunning;
         private TcpClient Client;
         private Stream Stream;
+        private string Name;
 
-        public MessageSender()
+        public MessageSender(string name)
         {
             if (Instance != null)
                 Instance.Dispose();
@@ -34,22 +36,23 @@ namespace SecurityProject0_client.Core.Services
             SendQueue = new ConcurrentQueue<string>();
             ReceiveQueue = new ConcurrentQueue<string>();
             IsRunning = false;
+            this.Name = name;
         }
 
-        public void Connect(string server, string message, int port = 13000)
+        public void Connect(string server, int port = 13000)
         {
             try
             {
 
                 Client = new TcpClient(server, port);
 
-                byte[] data = Encoding.Unicode.GetBytes(message);
-
 
                 Stream = Client.GetStream();
 
                 Task.Run(ListenToServer);
                 Task.Run(ProcessIO);
+
+                this.SendMessage($"init@{Name}");
             }
             catch (Exception)
             {
@@ -131,6 +134,13 @@ namespace SecurityProject0_client.Core.Services
             Stream.Close();
             Client.Dispose();
             IsRunning = false;
+        }
+
+        public static void Init(object sender, EventArgs e)
+        {
+            var ee = e as LoginEventArg;
+            var send = new MessageSender(ee.Name);
+            send.Connect("127.0.0.1");
         }
     }
 }

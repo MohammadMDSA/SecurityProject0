@@ -39,7 +39,7 @@ namespace SecurityProject0_client.Views
         {
             var message = MessageInput.Text;
             MessageInput.Text = string.Empty;
-            MessageSender.Connect("127.0.0.1", message);
+            MessageSender.Instance.SendMessage(message);
         }
     }
 }

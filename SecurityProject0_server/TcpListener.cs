@@ -56,7 +56,9 @@ namespace SecurityProject0_server
                     // Get a stream object for reading and writing
                     NetworkStream stream = client.GetStream();
                     int id = Clients.Count;
-                    Clients.Add(id, new Client(client, stream, id));
+                    var c = new Client(client, stream, id);
+                    c.OnIncommeingMessage += Parser;
+                    Clients.Add(id, c);
 
                     //int i;
 
@@ -98,6 +100,36 @@ namespace SecurityProject0_server
 
             Console.WriteLine("\nHit enter to continue...");
             Console.Read();
+        }
+
+        private void Parser(string message, int id)
+        {
+            if (message == null || message == "")
+                return;
+            var splited = message.Split('@');
+            switch (splited[0].ToLower())
+            {
+                case "init":
+                    if (splited.Length < 2 || splited[1] == "")
+                        return;
+                    InitClient(id, splited[1]);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private void InitClient(int id, string name)
+        {
+            if (!Clients.ContainsKey(id))
+                return;
+            var cl = Clients[id];
+            cl.Name = name;
+            foreach (var item in Clients)
+            {
+                if (item.Key != id)
+                    cl.Send($"user@{item.Key}@{item.Value.Name}");
+            }
         }
 
         public void Dispose()

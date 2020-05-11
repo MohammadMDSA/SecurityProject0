@@ -32,6 +32,7 @@ namespace SecurityProject0_client.Services
         {
             IdentityService.LoggedIn += OnLoggedIn;
             IdentityService.LoggedOut += OnLoggedOut;
+            IdentityService.LoggedIn += MessageSender.Init;
         }
 
         public async Task<UserData> GetUserAsync()
@@ -47,6 +48,8 @@ namespace SecurityProject0_client.Services
 
             return _user;
         }
+
+        public UserData GetUserData() => _user;
 
         private async void OnLoggedIn(object sender, EventArgs e)
         {
