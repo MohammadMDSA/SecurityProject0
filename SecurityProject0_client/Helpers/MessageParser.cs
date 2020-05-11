@@ -17,6 +17,9 @@ namespace SecurityProject0_client.Core.Services
         public static UserData User { get; private set; }
 
         public static Dictionary<int, Contact> Contacts = new Dictionary<int, Contact>();
+        public static event MessageEventHandler OnMessage;
+
+        public delegate void MessageEventHandler(Message msg, int sender, int receiver);
 
         public static void Parse(string message)
         {
@@ -92,6 +95,8 @@ namespace SecurityProject0_client.Core.Services
                 Contacts[sessionId].Messages.Add(mess);
             else
                 Contacts[senderId].Messages.Add(mess);
+
+            OnMessage?.Invoke(mess, sessionId, senderId);
 
         }
     }

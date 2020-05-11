@@ -42,7 +42,7 @@
             </Grid>
         </Grid>
         <ScrollViewer x:Name="ChatViewScroller" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignRightWithPanel="True" RelativePanel.Above="InputHolderPane" RelativePanel.Below="Info">
-            <ListView ItemsSource="{x:Bind MasterMenuItem.Messages, Mode=OneWay}" SelectionMode="None">
+            <ListView x:Name="ChatList" SelectionMode="None">
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>

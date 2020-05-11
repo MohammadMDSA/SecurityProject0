@@ -8,12 +8,15 @@ using System.ComponentModel;
 using SecurityProject0_client.Services;
 using SecurityProject0_client.Core.Helpers;
 using SecurityProject0_client.Models;
+using System.Collections.ObjectModel;
+using Windows.UI.Xaml.Data;
 
 namespace SecurityProject0_client.Views
 {
     public sealed partial class ChatsDetailControl : UserControl
     {
         private UserDataService UserDataService = Singleton<UserDataService>.Instance;
+        private ObservableCollection<Message> Messages = new ObservableCollection<Message>();
 
         public Contact MasterMenuItem
         {
@@ -26,8 +29,32 @@ namespace SecurityProject0_client.Views
         public ChatsDetailControl()
         {
             InitializeComponent();
+            MessageParser.OnMessage += MessageParser_OnMessage;
+            Binding b = new Binding();
+            b.Source = Messages;
+            b.Mode = BindingMode.OneWay;
+            ChatList.SetBinding(ListView.ItemsSourceProperty, b);
+            Loaded += ChatsDetailControl_Loaded;
         }
 
+        private void ChatsDetailControl_Loaded(object sender, RoutedEventArgs e)
+        {
+            Messages.Clear();
+            foreach (var item in MasterMenuItem.Messages)
+            {
+                Messages.Add(item);
+            }
+        }
+
+        private async void MessageParser_OnMessage(Message msg, int sender, int receiver)
+        {
+            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            {
+                if (sender != MasterMenuItem.Id && receiver != MasterMenuItem.Id)
+                    return;
+                Messages.Add(msg);
+            });
+        }
 
         private static void OnMasterMenuItemPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
