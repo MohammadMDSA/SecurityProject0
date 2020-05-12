@@ -49,12 +49,19 @@ namespace SecurityProject0_server
             {
                 while (IsRunning)
                 {
+                    if (!SocketClient.Connected)
+                        throw new IOException("Disconnected from remote");
                     try
                     {
-                        while ((i = Stream.Read(bytes, 0, bytes.Length)) != 0)
+                        if (Stream.DataAvailable)
+                            while ((i = Stream.Read(bytes, 0, bytes.Length)) != 0)
+                            {
+                                data = Encoding.Unicode.GetString(bytes, 0, i);
+                                ReceiveQueue.Enqueue(data);
+                            }
+                        else
                         {
-                            data = Encoding.Unicode.GetString(bytes, 0, i);
-                            ReceiveQueue.Enqueue(data);
+                            Task.Delay(100).Wait();
                         }
 
 
@@ -67,7 +74,7 @@ namespace SecurityProject0_server
                         SendQueue.TryDequeue(out var msg);
                         var bs = System.Text.Encoding.Unicode.GetBytes(msg);
                         Stream.Write(bs, 0, bs.Length);
-                        Stream.Flush();
+                        Stream.FlushAsync().Wait();
                         Console.WriteLine($"Sent: {msg} to {this.Id}");
                     }
                 }
@@ -104,7 +111,7 @@ namespace SecurityProject0_server
                 }
                 catch (Exception)
                 {
-                    
+
                 }
                 finally
                 {
@@ -114,7 +121,7 @@ namespace SecurityProject0_server
 
         public void Send(string msg)
         {
-            this.SendQueue.Enqueue(msg);
+            this.SendQueue.Enqueue(msg + "|");
         }
 
         public void Dispose()

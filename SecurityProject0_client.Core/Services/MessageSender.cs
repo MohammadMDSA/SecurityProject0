@@ -25,7 +25,7 @@ namespace SecurityProject0_client.Core.Services
         private ConcurrentQueue<string> ReceiveQueue;
         private bool IsRunning;
         private TcpClient Client;
-        private Stream Stream;
+        private NetworkStream Stream;
         private string Name;
 
         public MessageSender(string name)
@@ -69,16 +69,25 @@ namespace SecurityProject0_client.Core.Services
 
             try
             {
+                IsRunning = true;
                 while (IsRunning)
                 {
                     try
                     {
-                        Console.WriteLine(Stream.CanRead);
-                        while ((i = Stream.Read(bytes, 0, bytes.Length)) != 0)
-                        {
-                            data = Encoding.Unicode.GetString(bytes, 0, i);
-                            ReceiveQueue.Enqueue(data);
-                        }
+                        if (Stream.DataAvailable)
+                            while ((i = Stream.Read(bytes, 0, bytes.Length)) != 0)
+                            {
+                                data = Encoding.Unicode.GetString(bytes, 0, i);
+                                var splited = data.Split('|');
+                                foreach (var item in splited)
+                                {
+                                    if (item == null || item == string.Empty)
+                                        continue;
+                                    ReceiveQueue.Enqueue(item);
+                                }
+                            }
+                        else
+                            Task.Delay(100).Wait();
 
 
                     }

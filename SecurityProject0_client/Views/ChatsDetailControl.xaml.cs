@@ -15,6 +15,9 @@ namespace SecurityProject0_client.Views
 {
     public sealed partial class ChatsDetailControl : UserControl
     {
+
+        public static event EventHandler OnMasterChange;
+
         private UserDataService UserDataService = Singleton<UserDataService>.Instance;
         private ObservableCollection<Message> Messages = new ObservableCollection<Message>();
 
@@ -24,7 +27,7 @@ namespace SecurityProject0_client.Views
             set { SetValue(MasterMenuItemProperty, value); }
         }
 
-        public static readonly DependencyProperty MasterMenuItemProperty = DependencyProperty.Register("MasterMenuItem", typeof(Contact), typeof(ChatsDetailControl), new PropertyMetadata(null, OnMasterMenuItemPropertyChanged));
+        public readonly DependencyProperty MasterMenuItemProperty = DependencyProperty.Register("MasterMenuItem", typeof(Contact), typeof(ChatsDetailControl), new PropertyMetadata(null, OnMasterMenuItemPropertyChanged));
 
         public ChatsDetailControl()
         {
@@ -35,6 +38,16 @@ namespace SecurityProject0_client.Views
             b.Mode = BindingMode.OneWay;
             ChatList.SetBinding(ListView.ItemsSourceProperty, b);
             Loaded += ChatsDetailControl_Loaded;
+            OnMasterChange += ChatsDetailControl_OnMasterChange;
+        }
+
+        private void ChatsDetailControl_OnMasterChange(object sender, EventArgs e)
+        {
+            Messages.Clear();
+            foreach (var item in MasterMenuItem.Messages)
+            {
+                Messages.Add(item);
+            }
         }
 
         private void ChatsDetailControl_Loaded(object sender, RoutedEventArgs e)
@@ -60,6 +73,7 @@ namespace SecurityProject0_client.Views
         {
             var control = d as ChatsDetailControl;
             control.ChatViewScroller.ChangeView(0, 0, 1);
+            OnMasterChange?.Invoke(null, EventArgs.Empty);
         }
 
         private void TextBox_KeyUp(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
