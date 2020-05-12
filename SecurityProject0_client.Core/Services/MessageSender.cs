@@ -75,17 +75,20 @@ namespace SecurityProject0_client.Core.Services
                     try
                     {
                         if (Stream.DataAvailable)
-                            while ((i = Stream.Read(bytes, 0, bytes.Length)) != 0)
+                        {
+                            data = "";
+                            while (Stream.DataAvailable && (i = Stream.Read(bytes, 0, bytes.Length)) != 0)
                             {
-                                data = Encoding.Unicode.GetString(bytes, 0, i);
-                                var splited = data.Split('|');
-                                foreach (var item in splited)
-                                {
-                                    if (item == null || item == string.Empty)
-                                        continue;
-                                    ReceiveQueue.Enqueue(item);
-                                }
+                                data += Encoding.Unicode.GetString(bytes, 0, i);
                             }
+                            var splited = data.Split('|');
+                            foreach (var item in splited)
+                            {
+                                if (item == null || item == string.Empty)
+                                    continue;
+                                ReceiveQueue.Enqueue(item);
+                            }
+                        }
                         else
                             Task.Delay(100).Wait();
 
@@ -140,7 +143,7 @@ namespace SecurityProject0_client.Core.Services
 
         public void SendMessage(string msg)
         {
-            SendQueue.Enqueue(msg);
+            SendQueue.Enqueue(msg + "|");
         }
 
         public void Dispose()

@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
@@ -54,11 +55,20 @@ namespace SecurityProject0_server
                     try
                     {
                         if (Stream.DataAvailable)
-                            while ((i = Stream.Read(bytes, 0, bytes.Length)) != 0)
+                        {
+                            data = "";
+                            while (Stream.DataAvailable && (i = Stream.Read(bytes, 0, bytes.Length)) != 0)
                             {
-                                data = Encoding.Unicode.GetString(bytes, 0, i);
-                                ReceiveQueue.Enqueue(data);
+                                data += Encoding.Unicode.GetString(bytes, 0, i);
                             }
+                            var splited = data.Split('|');
+                            foreach (var item in splited)
+                            {
+                                if (item == null || item == String.Empty)
+                                    continue;
+                                ReceiveQueue.Enqueue(item);
+                            }
+                        }
                         else
                         {
                             Task.Delay(100).Wait();
