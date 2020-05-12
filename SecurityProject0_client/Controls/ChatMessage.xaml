@@ -39,7 +39,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Bind Message.RawMessage, Mode=OneWay}"/>
+            <TextBlock Grid.Row="0" Grid.Column="0" TextWrapping="Wrap" Text="{x:Bind Message.RawMessage, Mode=OneWay}"/>
             <!--<TextBlock Grid.Row="1" Text="{x:Bind Message.FromMe, Mode=OneWay}"/>-->
             <TextBlock Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Text="{x:Bind Message.DeliveryTime, Mode=OneWay}"/>
         </Grid>
