@@ -7,6 +7,7 @@
   xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4" 
   xmlns:iot2="http://schemas.microsoft.com/appx/manifest/iot/windows10/2" 
   xmlns:genTemplate="http://schemas.microsoft.com/appx/developer/windowsTemplateStudio"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap mp genTemplate">
 
   <Identity
@@ -54,6 +55,8 @@
   <Capabilities>
     <Capability Name="internetClientServer" />
     <Capability Name="internetClient" />
+    <uap:Capability Name="removableStorage"/>
+    <rescap:Capability Name="broadFileSystemAccess"/>
   </Capabilities>
 
   <genTemplate:Metadata>

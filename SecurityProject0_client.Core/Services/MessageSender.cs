@@ -50,10 +50,13 @@ namespace SecurityProject0_client.Core.Services
                 Stream = Client.GetStream();
                 Stream.ReadTimeout = 100;
 
+                Client.ReceiveBufferSize = 1_048_576;
+                Client.SendBufferSize = 1_048_576;
+
                 Task.Run(ListenToServer);
                 Task.Run(ProcessIO);
 
-                this.SendMessage($"init@{Name}");
+                this.SendMessage($"init{Helper.SocketMessageSeperator}{Name}");
             }
             catch (Exception)
             {

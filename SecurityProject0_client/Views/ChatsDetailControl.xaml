@@ -6,6 +6,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:help="using:SecurityProject0_client.Helpers"
     xmlns:con="using:SecurityProject0_client.Controls"
+    xmlns:dd="using:SecurityProject0_client.Services.DragAndDrop"
     mc:Ignorable="d"
     d:DesignHeight="300"
     d:DesignWidth="400">
@@ -32,7 +33,7 @@
                     </FontIcon>
                 </Border>
 
-                <TextBlock Margin="15,0,15,5" Grid.Row="0" FontSize="23" Grid.Column="1" HorizontalAlignment="Stretch" Text="{x:Bind MasterMenuItem.Name, Mode=OneWay}"/>
+                <TextBlock x:Name="ContactName" Margin="15,0,15,5" Grid.Row="0" FontSize="23" Grid.Column="1" HorizontalAlignment="Stretch" />
                 <RelativePanel Grid.Column="1" Grid.Row="1">
                     <TextBox RelativePanel.AlignTopWithPanel="True" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignBottomWithPanel="True" RelativePanel.LeftOf="SubmitKey"  x:Name="ContactPhisical" PlaceholderText="Physical Key" HorizontalAlignment="Stretch" Margin="15,5,5,0" TextWrapping="NoWrap"/>
                     <Button x:Name="SubmitKey" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignBottomWithPanel="True" CornerRadius="5" Click="SubmitKey_Click">
@@ -41,7 +42,13 @@
                 </RelativePanel>
             </Grid>
         </Grid>
-        <ScrollViewer x:Name="ChatViewScroller" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignRightWithPanel="True" RelativePanel.Above="InputHolderPane" RelativePanel.Below="Info">
+        <ScrollViewer x:Name="ChatViewScroller" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignRightWithPanel="True" RelativePanel.Above="InputHolderPane" RelativePanel.Below="Info" AllowDrop="True">
+            <dd:DragDropService.Configuration>
+                <dd:DropConfiguration  DropStorageItemsAction="{x:Bind GetStorageItem}"/>
+            </dd:DragDropService.Configuration>
+            <dd:DragDropService.VisualConfiguration>
+                <dd:VisualDropConfiguration Caption="Send" IsContentVisible="False" DropOverImage="Send"/>
+            </dd:DragDropService.VisualConfiguration>
             <ListView x:Name="ChatList" SelectionMode="None">
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
@@ -56,7 +63,10 @@
             </ListView>
         </ScrollViewer>
         <RelativePanel Margin="5" x:Name="InputHolderPane" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignBottomWithPanel="True">
-            <TextBox x:Name="MessageInput" RelativePanel.AlignLeftWithPanel="True" RelativePanel.LeftOf="SendButton" RelativePanel.AlignBottomWithPanel="True" RelativePanel.AlignTopWithPanel="True" KeyUp="TextBox_KeyUp" />
+            <TextBox x:Name="MessageInput" RelativePanel.AlignLeftWithPanel="True" RelativePanel.LeftOf="AttachButton" RelativePanel.AlignBottomWithPanel="True" RelativePanel.AlignTopWithPanel="True" KeyUp="TextBox_KeyUp" />
+            <Button Margin="5,0,0,0" x:Name="AttachButton" RelativePanel.LeftOf="SendButton" RelativePanel.AlignBottomWithPanel="True" RelativePanel.AlignTopWithPanel="True" VerticalAlignment="Stretch" Click="AttachButton_Click">
+                <SymbolIcon Symbol="Attach" Foreground="Gray"/>
+            </Button>
             <Button Margin="5,0,0,0" x:Name="SendButton" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignBottomWithPanel="True" RelativePanel.AlignTopWithPanel="True" VerticalAlignment="Stretch" Click="SendButton_Click">
                 <SymbolIcon Symbol="Send" Foreground="Gray"/>
             </Button>

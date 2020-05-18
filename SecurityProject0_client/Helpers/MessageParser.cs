@@ -26,7 +26,7 @@ namespace SecurityProject0_client.Core.Services
 
             if (message == null || message == "")
                 return;
-            var splited = message.Split('@');
+            var splited = message.Split(Helper.SocketMessageSeperator);
             string command = splited[0].ToLower();
             switch (command)
             {
@@ -41,6 +41,9 @@ namespace SecurityProject0_client.Core.Services
                     break;
                 case "message":
                     GetMessage(splited);
+                    break;
+                case "file":
+                    GetMessage(splited, true);
                     break;
                 default:
                     break;
@@ -78,19 +81,36 @@ namespace SecurityProject0_client.Core.Services
             //ChatsPage.GlobalContacts.Remove(new Contact("", id));
         }
 
-        public static void GetMessage(string[] splited)
+        public static void GetMessage(string[] splited, bool file = false)
         {
             if (splited.Length < 5)
                 return;
             if (!int.TryParse(splited[1], out var sessionId) || !int.TryParse(splited[2], out var senderId) || !long.TryParse(splited[4], out var ticks))
                 return;
             var fromMe = Id == senderId;
-            var mess = new Message
+            Message mess = null;
+            if(!file)
+                mess = new Message(false)
+                {
+                    DeliveryTime = new DateTime(ticks),
+                    _rawMessage = splited[3],
+                    FromMe = fromMe
+                };
+            else
             {
-                DeliveryTime = new DateTime(ticks),
-                _rawMessage = splited[3],
-                FromMe = fromMe
-            };
+                var dataSp = splited[3].Split(';');
+                if (dataSp.Length < 2)
+                    return;
+                var fileName = dataSp[0];
+                var data = splited[3].Substring(fileName.Length + 1);
+                mess = new File(fileName)
+                {
+                    DeliveryTime = new DateTime(ticks),
+                    _rawMessage = data,
+                    FromMe = fromMe
+                };
+                (mess as File).Save();
+            }
             if (fromMe)
                 Contacts[sessionId].Messages.Add(mess);
             else

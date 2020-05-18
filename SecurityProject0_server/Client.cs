@@ -1,9 +1,11 @@
-﻿using System;
+﻿using SecurityProject0_shared.Models;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -35,6 +37,8 @@ namespace SecurityProject0_server
             this.SocketClient = client;
             stream.ReadTimeout = 100;
             this.Id = id;
+            client.ReceiveBufferSize = 1_048_576;
+            client.SendBufferSize = 1_048_576;
             Task.Run(Run);
             Task.Run(ProcessIO);
         }
@@ -114,7 +118,7 @@ namespace SecurityProject0_server
                     {
                         ReceiveQueue.TryDequeue(out var msg);
                         OnIncommeingMessage?.Invoke(msg, Id);
-                        Console.WriteLine("{0}@Received: {1}", Id, msg);
+                        Console.WriteLine("{0}{1}Received: {2}", Id, Helper.SocketMessageSeperator, msg);
                     }
 
 

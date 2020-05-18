@@ -6,6 +6,8 @@ using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Storage;
+using Windows.System;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -23,7 +25,12 @@ namespace SecurityProject0_client.Controls
 
         public Message Message
         {
-            get { return GetValue(MessageProperty) as Message ?? new Message(); }
+            get
+            {
+                var res = GetValue(MessageProperty) as Message ?? new Message(false);
+                UpdateMessageType(res);
+                return res;
+            }
             set { SetValue(MessageProperty, value); }
         }
 
@@ -36,6 +43,31 @@ namespace SecurityProject0_client.Controls
         public ChatMessage()
         {
             this.InitializeComponent();
+            UpdateMessageType(Message);
+        }
+
+        private void UpdateMessageType(Message mess)
+        {
+            var isFile = mess.IsFile;
+            if(isFile)
+            {
+                var file = mess as SecurityProject0_shared.Models.File;
+                FileShower.Visibility = Visibility.Visible;
+                MessageShower.Visibility = Visibility.Collapsed;
+                FileNameShower.Text = file.Name;
+            }
+            else
+            {
+                FileShower.Visibility = Visibility.Collapsed;
+                MessageShower.Visibility = Visibility.Visible;
+            }
+        }
+
+        private async void FontIcon_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            var file = Message as SecurityProject0_shared.Models.File;
+            var storageFile = await StorageFile.GetFileFromPathAsync(file.Path);
+            var res = await Launcher.LaunchFileAsync(storageFile);
         }
     }
 }

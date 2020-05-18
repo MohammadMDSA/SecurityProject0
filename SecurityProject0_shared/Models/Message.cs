@@ -11,6 +11,7 @@ namespace SecurityProject0_shared.Models
         public bool FromMe { get; set; }
         public DateTime DeliveryTime { get; set; }
         public string EncryptedMessage { get; private set; }
+        public bool IsFile { get; private set; }
         public string RawMessage
         {
             get
@@ -22,9 +23,10 @@ namespace SecurityProject0_shared.Models
         }
         public bool IsDecrypted { get; private set; }
 
-        public Message()
+        public Message(bool isFile)
         {
             this.IsDecrypted = false;
+            this.IsFile = isFile;
         }
 
         private void Decrypt()

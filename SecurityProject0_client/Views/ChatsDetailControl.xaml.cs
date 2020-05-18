@@ -10,6 +10,12 @@ using SecurityProject0_client.Core.Helpers;
 using SecurityProject0_client.Models;
 using System.Collections.ObjectModel;
 using Windows.UI.Xaml.Data;
+using System.Collections.Generic;
+using Windows.Storage;
+using System.IO;
+using System.Threading.Tasks;
+using System.Linq;
+using Windows.Storage.Pickers;
 
 namespace SecurityProject0_client.Views
 {
@@ -28,7 +34,8 @@ namespace SecurityProject0_client.Views
         }
 
         public readonly DependencyProperty MasterMenuItemProperty = DependencyProperty.Register("MasterMenuItem", typeof(Contact), typeof(ChatsDetailControl), new PropertyMetadata(null, OnMasterMenuItemPropertyChanged));
-
+        public Action<IReadOnlyList<IStorageItem>> GetStorageItem => ((items) => OnGetStorageItem(items));
+        
         public ChatsDetailControl()
         {
             InitializeComponent();
@@ -41,8 +48,14 @@ namespace SecurityProject0_client.Views
             OnMasterChange += ChatsDetailControl_OnMasterChange;
         }
 
+        public async void OnGetStorageItem(IReadOnlyList<IStorageItem> items)
+        {
+            await SendFiles(items);
+        }
+
         private void ChatsDetailControl_OnMasterChange(object sender, EventArgs e)
         {
+            ContactName.Text = MasterMenuItem.Name;
             Messages.Clear();
             foreach (var item in MasterMenuItem.Messages)
             {
@@ -87,8 +100,7 @@ namespace SecurityProject0_client.Views
         {
             var message = MessageInput.Text;
             MessageInput.Text = string.Empty;
-            var user = UserDataService.GetUserData();
-            MessageSender.Instance.SendMessage($"message@{MasterMenuItem.Id}@{message}@{DateTime.Now.Ticks}");
+            MessageSender.Instance.SendMessage($"message{Helper.SocketMessageSeperator}{MasterMenuItem.Id}{Helper.SocketMessageSeperator}{message}{Helper.SocketMessageSeperator}{DateTime.Now.Ticks}");
         }
 
         private void SubmitKey_Click(object sender, RoutedEventArgs e)
@@ -99,6 +111,38 @@ namespace SecurityProject0_client.Views
         private void SendButton_Click(object sender, RoutedEventArgs e)
         {
             SendText();
+
+        }
+
+        private async Task SendFiles(IReadOnlyList<IStorageItem> items)
+        {
+            foreach (var item in items)
+            {
+                try
+                {
+
+                    var file = await FileIO.ReadTextAsync(item as IStorageFile, Windows.Storage.Streams.UnicodeEncoding.Utf16LE);
+                    MessageSender.Instance.SendMessage($"file{Helper.SocketMessageSeperator}{MasterMenuItem.Id}{Helper.SocketMessageSeperator}{item.Name};{file}{Helper.SocketMessageSeperator}{DateTime.Now.Ticks}");
+                }
+                catch (Exception) { }
+
+            }
+        }
+
+        private async void AttachButton_Click(object sender, RoutedEventArgs e)
+        {
+            var picker = new FileOpenPicker();
+            picker.ViewMode = PickerViewMode.Thumbnail;
+            picker.SuggestedStartLocation = PickerLocationId.Desktop;
+            picker.CommitButtonText = "Send";
+            picker.FileTypeFilter.Add("*");
+            var files = await picker.PickMultipleFilesAsync();
+            if (files == null || files.Count == 0)
+                return;
+            else
+            {
+                await SendFiles(files);
+            }
         }
     }
 }

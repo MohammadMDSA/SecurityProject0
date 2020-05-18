@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SecurityProject0_shared.Models;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
@@ -61,7 +62,7 @@ namespace SecurityProject0_server
                     c.OnIncommeingMessage += Parser;
                     c.OnDisconnect += OnClientDiconnect;
                     Clients.Add(id, c);
-                    c.Send("id@" + id);
+                    c.Send($"id{Helper.SocketMessageSeperator}{id}");
 
                     //int i;
 
@@ -116,7 +117,7 @@ namespace SecurityProject0_server
             Clients.Remove(id);
             foreach (var item in Clients)
             {
-                item.Value.Send("remove@" + id);
+                item.Value.Send($"remove{Helper.SocketMessageSeperator}{id}");
             }
             Console.WriteLine($"{id} Disconnected");
 
@@ -126,7 +127,7 @@ namespace SecurityProject0_server
         {
             if (message == null || message == "")
                 return;
-            var splited = message.Split('@');
+            var splited = message.Split(Helper.SocketMessageSeperator);
             switch (splited[0].ToLower())
             {
                 case "init":
@@ -145,16 +146,24 @@ namespace SecurityProject0_server
                         return;
                     SendMessage(receiver, id, splited[2], ticks);
                     break;
+                case "file":
+                    if (splited.Length < 4)
+                        return;
+                    if (!int.TryParse(splited[1], out receiver) || !long.TryParse(splited[3], out ticks))
+                        return;
+                    SendMessage(receiver, id, splited[2], ticks, true);
+                    break;
                 default:
                     break;
             }
         }
 
-        private void SendMessage(int receiver, int sender, string message, long time)
+        private void SendMessage(int receiver, int sender, string message, long time, bool isFile = false)
         {
+            var command = isFile ? "file" : "message";
             var ren = Clients[sender];
             var res = Clients[receiver];
-            var msg = $"message@{receiver}@{sender}@{message}@{time}";
+            var msg = $"{command}{Helper.SocketMessageSeperator}{receiver}{Helper.SocketMessageSeperator}{sender}{Helper.SocketMessageSeperator}{message}{Helper.SocketMessageSeperator}{time}";
             ren.Send(msg);
             res.Send(msg);
         }
@@ -169,8 +178,8 @@ namespace SecurityProject0_server
             {
                 if (item.Key != id)
                 {
-                    cl.Send($"user@{item.Key}@{item.Value.Name}");
-                    item.Value.Send($"user@{id}@{name}");
+                    item.Value.Send($"user{Helper.SocketMessageSeperator}{id}{Helper.SocketMessageSeperator}{name}");
+                    cl.Send($"user{Helper.SocketMessageSeperator}{item.Key}{Helper.SocketMessageSeperator}{item.Value.Name}");
                 }
             }
         }
