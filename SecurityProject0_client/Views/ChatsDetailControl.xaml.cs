@@ -40,12 +40,18 @@ namespace SecurityProject0_client.Views
         {
             InitializeComponent();
             MessageParser.OnMessage += MessageParser_OnMessage;
+            MessageParser.OnPhysicalKeyChanged += MessageParser_OnPhysicalKeyChanged;
             Binding b = new Binding();
             b.Source = Messages;
             b.Mode = BindingMode.OneWay;
             ChatList.SetBinding(ListView.ItemsSourceProperty, b);
             Loaded += ChatsDetailControl_Loaded;
             OnMasterChange += ChatsDetailControl_OnMasterChange;
+        }
+
+        private void MessageParser_OnPhysicalKeyChanged(string key)
+        {
+            ContactPhisical.Text = key;
         }
 
         public async void OnGetStorageItem(IReadOnlyList<IStorageItem> items)
@@ -100,7 +106,7 @@ namespace SecurityProject0_client.Views
         {
             var message = MessageInput.Text;
             MessageInput.Text = string.Empty;
-            MessageSender.Instance.SendMessage($"message{Helper.SocketMessageSeperator}{MasterMenuItem.Id}{Helper.SocketMessageSeperator}{message}{Helper.SocketMessageSeperator}{DateTime.Now.Ticks}");
+            MessageSender.Instance.SendMessage($"message{Helper.SocketMessageAttributeSeperator}{MasterMenuItem.Id}{Helper.SocketMessageAttributeSeperator}{message}{Helper.SocketMessageAttributeSeperator}{DateTime.Now.Ticks}");
         }
 
         private void SubmitKey_Click(object sender, RoutedEventArgs e)
@@ -122,7 +128,7 @@ namespace SecurityProject0_client.Views
                 {
 
                     var file = await FileIO.ReadTextAsync(item as IStorageFile, Windows.Storage.Streams.UnicodeEncoding.Utf16LE);
-                    MessageSender.Instance.SendMessage($"file{Helper.SocketMessageSeperator}{MasterMenuItem.Id}{Helper.SocketMessageSeperator}{item.Name};{file}{Helper.SocketMessageSeperator}{DateTime.Now.Ticks}");
+                    MessageSender.Instance.SendMessage($"file{Helper.SocketMessageAttributeSeperator}{MasterMenuItem.Id}{Helper.SocketMessageAttributeSeperator}{item.Name};{file}{Helper.SocketMessageAttributeSeperator}{DateTime.Now.Ticks}");
                 }
                 catch (Exception) { }
 

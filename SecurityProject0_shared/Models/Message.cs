@@ -40,4 +40,11 @@ namespace SecurityProject0_shared.Models
         }
 
     }
+
+    public enum EncryptionMode
+    {
+        None,
+        RSA,
+        AES
+    }
 }

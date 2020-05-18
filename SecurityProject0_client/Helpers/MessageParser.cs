@@ -8,6 +8,9 @@ using Windows.Media.Core;
 using SecurityProject0_client.Models;
 using SecurityProject0_client.Core.Helpers;
 using SecurityProject0_client.Services;
+using Windows.Web.Http;
+using Newtonsoft.Json;
+using System.Security.Cryptography;
 
 namespace SecurityProject0_client.Core.Services
 {
@@ -15,10 +18,13 @@ namespace SecurityProject0_client.Core.Services
     {
         public static int Id { get; private set; }
         public static UserData User { get; private set; }
+        public static string PhysicalKey { get; set; }
 
         public static Dictionary<int, Contact> Contacts = new Dictionary<int, Contact>();
         public static event MessageEventHandler OnMessage;
+        public static event PhysicalKeyChangeHandler OnPhysicalKeyChanged;
 
+        public delegate void PhysicalKeyChangeHandler(string key);
         public delegate void MessageEventHandler(Message msg, int sender, int receiver);
 
         public static void Parse(string message)
@@ -26,7 +32,7 @@ namespace SecurityProject0_client.Core.Services
 
             if (message == null || message == "")
                 return;
-            var splited = message.Split(Helper.SocketMessageSeperator);
+            var splited = message.Split(Helper.SocketMessageAttributeSeperator);
             string command = splited[0].ToLower();
             switch (command)
             {
@@ -55,7 +61,12 @@ namespace SecurityProject0_client.Core.Services
             if (!int.TryParse(splited[1], out var id))
                 return;
             Id = id;
+            //OnPhysicalKeyChanged?.Invoke(splited[2]);
+            PhysicalKey = splited[2];
             User = Singleton<UserDataService>.Instance.GetUserData();
+            var param = JsonConvert.DeserializeObject<RSAParameters>(splited[2]);
+            MessageSender.Instance.ServerParams = param;
+            MessageSender.Instance.Initialized = true;
         }
 
         public static void AddUser(string[] splited)

@@ -1,9 +1,12 @@
-﻿using SecurityProject0_shared.Models;
+﻿using Newtonsoft.Json;
+using SecurityProject0_shared.Models;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Text.Json.Serialization;
 
 namespace SecurityProject0_server
 {
@@ -11,7 +14,8 @@ namespace SecurityProject0_server
     class TcpListener : IDisposable
     {
         public static TcpListener Instance { get; private set; }
-
+        public RSAParameters RSAPublicParameters { get; private set; }
+        public RSAParameters RSAPrivateParameters { get; private set; }
         private Dictionary<int, Client> Clients;
         private short IdCounter;
         public bool IsRunning { get; private set; }
@@ -24,6 +28,11 @@ namespace SecurityProject0_server
             IdCounter = 0;
             Clients = new Dictionary<int, Client>();
             IsRunning = true;
+            using (var rsa = new RSACryptoServiceProvider())
+            {
+                this.RSAPublicParameters = rsa.ExportParameters(false);
+                this.RSAPrivateParameters = rsa.ExportParameters(true);
+            }
         }
 
         public void Run()
@@ -62,7 +71,6 @@ namespace SecurityProject0_server
                     c.OnIncommeingMessage += Parser;
                     c.OnDisconnect += OnClientDiconnect;
                     Clients.Add(id, c);
-                    c.Send($"id{Helper.SocketMessageSeperator}{id}");
 
                     //int i;
 
@@ -117,7 +125,7 @@ namespace SecurityProject0_server
             Clients.Remove(id);
             foreach (var item in Clients)
             {
-                item.Value.Send($"remove{Helper.SocketMessageSeperator}{id}");
+                item.Value.Send($"remove{Helper.SocketMessageAttributeSeperator}{id}");
             }
             Console.WriteLine($"{id} Disconnected");
 
@@ -127,13 +135,13 @@ namespace SecurityProject0_server
         {
             if (message == null || message == "")
                 return;
-            var splited = message.Split(Helper.SocketMessageSeperator);
+            var splited = message.Split(Helper.SocketMessageAttributeSeperator);
             switch (splited[0].ToLower())
             {
                 case "init":
-                    if (splited.Length < 2 || splited[1] == "")
+                    if (splited.Length < 3 || splited[1] == "")
                         return;
-                    InitClient(id, splited[1]);
+                    InitClient(id, splited[1], splited[2]);
                     break;
                 case "disconnect":
                     Disconnect(id);
@@ -163,23 +171,25 @@ namespace SecurityProject0_server
             var command = isFile ? "file" : "message";
             var ren = Clients[sender];
             var res = Clients[receiver];
-            var msg = $"{command}{Helper.SocketMessageSeperator}{receiver}{Helper.SocketMessageSeperator}{sender}{Helper.SocketMessageSeperator}{message}{Helper.SocketMessageSeperator}{time}";
+            var msg = $"{command}{Helper.SocketMessageAttributeSeperator}{receiver}{Helper.SocketMessageAttributeSeperator}{sender}{Helper.SocketMessageAttributeSeperator}{message}{Helper.SocketMessageAttributeSeperator}{time}";
             ren.Send(msg);
             res.Send(msg);
         }
 
-        private void InitClient(int id, string name)
+        private void InitClient(int id, string name, string rsaParamStr)
         {
             if (!Clients.ContainsKey(id))
                 return;
+            var param = JsonConvert.DeserializeObject<RSAParameters>(rsaParamStr);
             var cl = Clients[id];
             cl.Name = name;
+            cl.RSAParameters = param;
             foreach (var item in Clients)
             {
                 if (item.Key != id)
                 {
-                    item.Value.Send($"user{Helper.SocketMessageSeperator}{id}{Helper.SocketMessageSeperator}{name}");
-                    cl.Send($"user{Helper.SocketMessageSeperator}{item.Key}{Helper.SocketMessageSeperator}{item.Value.Name}");
+                    item.Value.Send($"user{Helper.SocketMessageAttributeSeperator}{id}{Helper.SocketMessageAttributeSeperator}{name}");
+                    cl.Send($"user{Helper.SocketMessageAttributeSeperator}{item.Key}{Helper.SocketMessageAttributeSeperator}{item.Value.Name}");
                 }
             }
         }
