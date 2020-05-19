@@ -16,6 +16,7 @@ namespace SecurityProject0_server
         public static TcpListener Instance { get; private set; }
         public RSAParameters RSAPublicParameters { get; private set; }
         public RSAParameters RSAPrivateParameters { get; private set; }
+        public SessionKey SessionKey { get; set; }
         private Dictionary<int, Client> Clients;
         private short IdCounter;
         public bool IsRunning { get; private set; }
@@ -28,11 +29,12 @@ namespace SecurityProject0_server
             IdCounter = 0;
             Clients = new Dictionary<int, Client>();
             IsRunning = true;
-            using (var rsa = new RSACryptoServiceProvider())
+            using (var rsa = new RSACryptoServiceProvider(512))
             {
                 this.RSAPublicParameters = rsa.ExportParameters(false);
                 this.RSAPrivateParameters = rsa.ExportParameters(true);
             }
+            this.SessionKey = new SessionKey { ExpirationDate = new DateTime(0) };
         }
 
         public void Run()
@@ -139,9 +141,9 @@ namespace SecurityProject0_server
             switch (splited[0].ToLower())
             {
                 case "init":
-                    if (splited.Length < 3 || splited[1] == "")
+                    if (splited.Length < 5 || splited[1] == "")
                         return;
-                    InitClient(id, splited[1], splited[2]);
+                    InitClient(id, splited[1], splited[2], splited[3], splited[4]);
                     break;
                 case "disconnect":
                     Disconnect(id);
@@ -161,9 +163,25 @@ namespace SecurityProject0_server
                         return;
                     SendMessage(receiver, id, splited[2], ticks, true);
                     break;
+                case "encryption":
+                    if (splited.Length < 2)
+                        return;
+                    SetEncryptionType(id, splited[1]);
+                    break;
                 default:
                     break;
             }
+        }
+
+        private void SetEncryptionType(int id, string mode)
+        {
+            var client = Clients[id];
+            EncryptionMode mo;
+            if (mode == "sym")
+                mo = EncryptionMode.AES;
+            else
+                mo = EncryptionMode.RSA;
+            client.EncryptionMode = mo;
         }
 
         private void SendMessage(int receiver, int sender, string message, long time, bool isFile = false)
@@ -176,14 +194,18 @@ namespace SecurityProject0_server
             res.Send(msg);
         }
 
-        private void InitClient(int id, string name, string rsaParamStr)
+        private void InitClient(int id, string name, string rsaParamStr, string physicalKey, string sessionStr)
         {
             if (!Clients.ContainsKey(id))
                 return;
             var param = JsonConvert.DeserializeObject<RSAParameters>(rsaParamStr);
+            var phys = JsonConvert.DeserializeObject<AESKey>(physicalKey);
+            var sessionKey = JsonConvert.DeserializeObject<SessionKey>(Helper.AESDecrypt(sessionStr, phys));
             var cl = Clients[id];
             cl.Name = name;
             cl.RSAParameters = param;
+            cl.PhysicalKey = phys;
+            cl.SessionKey = sessionKey;
             foreach (var item in Clients)
             {
                 if (item.Key != id)

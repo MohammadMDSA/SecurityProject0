@@ -22,13 +22,15 @@ namespace SecurityProject0_server
         public int Id { get; private set; }
         public bool IsRunning { get; private set; }
         public string Name { get; set; }
+        public AESKey PhysicalKey { get; set; }
+        public SessionKey SessionKey { get; set; }
         public RSAParameters RSAParameters { get; set; }
         private ConcurrentQueue<string> SendQueue;
         private ConcurrentQueue<string> ReceiveQueue;
         private NetworkStream Stream;
         private TcpClient SocketClient;
         private bool Disposed;
-        private EncryptionMode EncryptionMode = EncryptionMode.RSA;
+        public EncryptionMode EncryptionMode { get; set; } = EncryptionMode.AES;
 
         public Client(TcpClient client, NetworkStream stream, int id)
         {
@@ -39,8 +41,8 @@ namespace SecurityProject0_server
             this.SocketClient = client;
             stream.ReadTimeout = 100;
             this.Id = id;
-            client.ReceiveBufferSize = 1_048_576;
-            client.SendBufferSize = 1_048_576;
+            //client.ReceiveBufferSize = 10_048_576;
+            //client.SendBufferSize = 10_048_576;
             Task.Run(Run);
             Task.Run(ProcessIO);
         }
@@ -48,8 +50,8 @@ namespace SecurityProject0_server
         public void Run()
         {
             int i;
-            string data = null;
-            byte[] bytes = new byte[256];
+            StringBuilder data = null;
+            byte[] bytes = new byte[SocketClient.ReceiveBufferSize / 2];
             IsRunning = true;
             Send($"id{Helper.SocketMessageAttributeSeperator}{this.Id}{Helper.SocketMessageAttributeSeperator}{JsonConvert.SerializeObject(TcpListener.Instance.RSAPublicParameters)}", EncryptionMode.None);
             try
@@ -62,18 +64,23 @@ namespace SecurityProject0_server
                     {
                         if (Stream.DataAvailable)
                         {
-                            data = "";
-                            while (Stream.DataAvailable && (i = Stream.Read(bytes, 0, bytes.Length)) != 0)
+                            data = new StringBuilder();
+                            var str = "";
+                            while ((Stream.DataAvailable || (str != string.Empty && !str.EndsWith(Helper.SocketMessageSplitter))) && (i = Stream.Read(bytes, 0, bytes.Length)) != 0)
                             {
-                                data += Encoding.Unicode.GetString(bytes, 0, i);
+                                str = Encoding.Unicode.GetString(bytes, 0, i);
+                                data.Append(str);
+                                Console.WriteLine(str);
                             }
-                            var splited = data.Split(Helper.SocketMessageSplitter);
+                            var splited = data.ToString().Split(Helper.SocketMessageSplitter, StringSplitOptions.RemoveEmptyEntries);
                             foreach (var item in splited)
                             {
                                 if (item == null || item == string.Empty)
                                     continue;
                                 ReceiveQueue.Enqueue(item);
                             }
+                            splited = null;
+                            data.Clear();
                         }
                         else
                         {
@@ -89,9 +96,24 @@ namespace SecurityProject0_server
                     {
                         SendQueue.TryDequeue(out var msg);
                         var bs = System.Text.Encoding.Unicode.GetBytes(msg);
-                        Stream.Write(bs, 0, bs.Length);
-                        Stream.FlushAsync().Wait();
-                        Console.WriteLine($"Sent: {msg} to {this.Id}");
+
+                        int maxLength = SocketClient.SendBufferSize / 2;
+                        int iterations = bs.Length / maxLength;
+                        StringBuilder stringBuilder = new StringBuilder();
+                        for (int ii = 0; ii <= iterations; ii++)
+                        {
+                            byte[] tempBytes = new byte[
+                                    (bs.Length - maxLength * ii > maxLength) ? maxLength :
+                                                  bs.Length - maxLength * ii];
+                            Buffer.BlockCopy(bs, maxLength * ii, tempBytes, 0,
+                                              tempBytes.Length);
+
+                            Stream.Write(tempBytes, 0, tempBytes.Length);
+                            Console.WriteLine($"Sent: {bs} to {this.Id}");
+
+                        }
+                        Stream.Flush();
+                        //Console.WriteLine($"Sent: {msg} to {this.Id}");
                     }
                 }
 
@@ -145,30 +167,81 @@ namespace SecurityProject0_server
 
             if (mode == EncryptionMode.RSA)
             {
-                using (var rsa = new RSACryptoServiceProvider())
+                msg += Helper.MacSeperator + Helper.RSASign(msg, TcpListener.Instance.RSAPrivateParameters);
+                msg = Helper.RSAEncrypt(msg, this.RSAParameters);
+            }
+            else if (mode == EncryptionMode.AES)
+            {
+                msg += Helper.MacSeperator + Helper.RSASign(msg, TcpListener.Instance.RSAPrivateParameters);
+                var buffer = new StringBuilder();
+                var maxSize = 100;
+                int iters = (int)Math.Ceiling(1f * msg.Length / maxSize);
+
+                for (var i = 0; i < iters; i++)
                 {
-                    rsa.ImportParameters(this.RSAParameters);
-                    var byteConverter = new UnicodeEncoding();
-                    string res = "";
-                    int maxLength = (128 - 44) / 2;
-                    var bytes = byteConverter.GetBytes(msg);
-                    int iterations = bytes.Length / maxLength;
-                    StringBuilder stringBuilder = new StringBuilder();
-                    for (int i = 0; i <= iterations; i++)
+                    string item;
+                    if (i * maxSize + 100 > msg.Length)
+                        item = msg.Substring(i * maxSize);
+                    else
+                        item = msg.Substring(i * maxSize, 100);
+                    if (this.SessionKey.IsExpired)
                     {
-                        byte[] tempBytes = new byte[
-                                (bytes.Length - maxLength * i > maxLength) ? maxLength :
-                                              bytes.Length - maxLength * i];
-                        Buffer.BlockCopy(bytes, maxLength * i, tempBytes, 0,
-                                          tempBytes.Length);
-                        byte[] encryptedBytes = rsa.Encrypt(tempBytes, true);
-                        Array.Reverse(encryptedBytes);
-                        stringBuilder.Append(Convert.ToBase64String(encryptedBytes));
+                        buffer.Append(Helper.SessionKeySeperator);
+                        this.SessionKey = Helper.GenerateSessionKey();
+                        buffer.Append(Helper.AESEncrypt(JsonConvert.SerializeObject(this.SessionKey), this.PhysicalKey));
+                        buffer.Append(Helper.SessionKeySeperator);
+                        buffer.Append(Helper.AESChunkSeperator);
                     }
-                    msg = stringBuilder.ToString(); ;
+                    buffer.Append(Helper.AESEncrypt(item, this.SessionKey.AESKey));
+                    buffer.Append(Helper.AESChunkSeperator);
                 }
+
+                msg = buffer.ToString();
             }
             this.SendQueue.Enqueue(encryptionIndicator + msg + Helper.SocketMessageSplitter);
+        }
+
+        public string Decrypt(string input)
+        {
+            if (input.StartsWith("non"))
+            {
+                return input.Substring(13);
+            }
+            if (input.StartsWith("rsa"))
+            {
+                input = input.Substring(13);
+                input = Helper.RSADecrypt(input, TcpListener.Instance.RSAPrivateParameters);
+                var split = input.Split(new string[] { Helper.MacSeperator }, StringSplitOptions.RemoveEmptyEntries);
+                var data = split[0];
+                var hash = split[1];
+                if (!data.StartsWith("init") && !Helper.RSAVerify(hash, data, this.RSAParameters))
+                    return "";
+                return data;
+            }
+            else
+            {
+                input = input.Substring(13);
+                var buffer = new StringBuilder();
+                var aesChunk = input.Split(new string[] { Helper.AESChunkSeperator }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var item in aesChunk)
+                {
+                    if (item.StartsWith(Helper.SessionKeySeperator) && item.EndsWith(Helper.SessionKeySeperator))
+                    {
+                        var sepLen = Helper.SessionKeySeperator.Length;
+                        var encSession = item.Substring(sepLen, item.Length - sepLen * 2);
+                        this.SessionKey = JsonConvert.DeserializeObject<SessionKey>(Helper.AESDecrypt(encSession, this.PhysicalKey));
+                        continue;
+                    }
+                    buffer.Append(Helper.AESDecrypt(item, this.SessionKey.AESKey));
+                }
+                input = buffer.ToString();
+                var split = input.Split(new string[] { Helper.MacSeperator }, StringSplitOptions.RemoveEmptyEntries);
+                var data = split[0];
+                var hash = split[1];
+                if (!Helper.RSAVerify(hash, data, this.RSAParameters))
+                    return "";
+                return data;
+            }
         }
 
         public void Send(string msg)
@@ -189,34 +262,6 @@ namespace SecurityProject0_server
 
         }
 
-        private string Decrypt(string input)
-        {
-            if (input.StartsWith("non"))
-            {
-                return input.Substring(13);
-            }
-            if (input.StartsWith("rsa"))
-            {
-                using var rsa = new RSACryptoServiceProvider();
-                rsa.ImportParameters(TcpListener.Instance.RSAPrivateParameters);
-                var msg = input.Substring(13);
-                string res = "";
-                var byteConverter = new UnicodeEncoding();
-                byte[] bytes = new byte[128];
-                var dwKeySize = rsa.KeySize;
-                int base64BlockSize = ((dwKeySize / 8) % 3 != 0) ? (((dwKeySize / 8) / 3) * 4) + 4 : ((dwKeySize / 8) / 3) * 4;
-                int iterations = msg.Length / base64BlockSize;
-                for (int i = 0; i < iterations; i++)
-                {
-                    byte[] encryptedBytes = Convert.FromBase64String(
-                         msg.Substring(base64BlockSize * i, base64BlockSize));
-                    Array.Reverse(encryptedBytes);
-                    res += byteConverter.GetString(rsa.Decrypt(encryptedBytes, true));
-                }
-                return res;
-            }
-            return "";
-        }
 
     }
 }

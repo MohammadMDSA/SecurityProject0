@@ -67,7 +67,7 @@ namespace SecurityProject0_client.Controls
         {
             var file = Message as SecurityProject0_shared.Models.File;
             var storageFile = await StorageFile.GetFileFromPathAsync(file.Path);
-            var res = await Launcher.LaunchFileAsync(storageFile);
+            var res = await Launcher.LaunchFileAsync(storageFile, new LauncherOptions { });
         }
     }
 }

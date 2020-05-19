@@ -91,6 +91,7 @@
                 </VisualStateGroup>
             </VisualStateManager.VisualStateGroups>
         <controls:MasterDetailsView
+            MasterPaneBackground="{StaticResource SystemControlAcrylicWindowMediumHighBrush}"
             x:Name="MasterDetailsViewControl"
             x:Uid="Chats"
             Background="{ThemeResource SystemControlPageBackgroundChromeLowBrush}"

@@ -19,13 +19,13 @@
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
                         <Setter Target="Gr.HorizontalAlignment" Value="Right"/>
-                        <Setter Target="MessageGrid.Background" Value="{StaticResource SystemControlAccentAcrylicElementAccentMediumHighBrush}"/>
+                        <Setter Target="MessageGrid.Background" Value="{StaticResource SystemControlAccentAcrylicWindowAccentMediumHighBrush}"/>
                     </VisualState.Setters>
                 </VisualState>
             </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
 
-        <StackPanel Orientation="Vertical" x:Name="MessageGrid" Padding="20" Grid.Column="1" Background="{StaticResource SystemControlAcrylicElementBrush}">
+        <StackPanel Orientation="Vertical" x:Name="MessageGrid" Padding="20" Grid.Column="1" Background="{StaticResource SystemControlAcrylicWindowMediumHighBrush}">
             <TextBlock x:Name="MessageShower" TextWrapping="Wrap" Text="{x:Bind Message.RawMessage, Mode=OneWay}"/>
             <StackPanel x:Name="FileShower" Orientation="Horizontal" HorizontalAlignment="Left" Grid.Row="0" Grid.Column="0">
                 <FontIcon x:Name="FileIcon" FontSize="30" FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xEC50;" Tapped="FontIcon_Tapped"/>

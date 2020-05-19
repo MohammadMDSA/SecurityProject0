@@ -140,6 +140,7 @@
       <DependentUpon>ChatMessage.xaml</DependentUpon>
     </Compile>
     <Compile Include="Helpers\EnumToBooleanConverter.cs" />
+    <Compile Include="Helpers\FileSaver.cs" />
     <Compile Include="Helpers\ImageHelper.cs" />
     <Compile Include="Helpers\MessageParser.cs" />
     <Compile Include="Helpers\NavHelper.cs" />

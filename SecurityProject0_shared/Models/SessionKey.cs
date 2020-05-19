@@ -4,11 +4,11 @@ using System.Text;
 
 namespace SecurityProject0_shared.Models
 {
-    public class SessionKey
+    public struct SessionKey
     {
-        public string Key { get; set; }
-        public DateTime ExpirationDate { get; private set; }
+        public AESKey AESKey { get; set; }
+        public DateTime ExpirationDate { get; set; }
 
-        public bool IsExpired { get => DateTime.Now > ExpirationDate; }
+        public bool IsExpired => DateTime.Now > ExpirationDate;
     }
 }

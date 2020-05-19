@@ -23,6 +23,9 @@ namespace SecurityProject0_client.Core.Services
 
         public static MessageSender Instance { get; private set; }
         public RSAParameters ServerParams { get; set; }
+        public AESKey PhysicalKey { get; set; }
+        public SessionKey SessionKey { get; set; }
+
         public bool Initialized { get; set; }
         private RSAParameters RSAParams;
         private ConcurrentQueue<string> SendQueue;
@@ -31,7 +34,7 @@ namespace SecurityProject0_client.Core.Services
         private TcpClient Client;
         private NetworkStream Stream;
         private string Name;
-        private EncryptionMode EncryptionMode = EncryptionMode.RSA;
+        public EncryptionMode EncryptionMode { get; set; } = EncryptionMode.AES;
 
         public MessageSender(string name)
         {
@@ -53,20 +56,25 @@ namespace SecurityProject0_client.Core.Services
 
 
                 Stream = Client.GetStream();
-                Stream.ReadTimeout = 100;
 
-                Client.ReceiveBufferSize = 1_048_576;
-                Client.SendBufferSize = 1_048_576;
+                //Client.ReceiveBufferSize = 10_048_576;
+                //Client.SendBufferSize = 10_048_576;
 
                 Task.Run(ListenToServer);
                 Task.Run(ProcessIO);
-
-                using (var rsa = new RSACryptoServiceProvider())
+                RSAParameters param;
+                using (var rsa = new RSACryptoServiceProvider(512))
                 {
-                    var param = rsa.ExportParameters(false);
+                    param = rsa.ExportParameters(false);
                     this.RSAParams = rsa.ExportParameters(true);
-                    this.SendMessage($"init{Helper.SocketMessageAttributeSeperator}{Name}{Helper.SocketMessageAttributeSeperator}{JsonConvert.SerializeObject(param)}", EncryptionMode.RSA);
                 }
+                using (var aes = new AesCryptoServiceProvider())
+                {
+                    this.PhysicalKey = new AESKey { IV = aes.IV, Key = aes.Key };
+                }
+                this.SessionKey = Helper.GenerateSessionKey();
+                string encSession = Helper.AESEncrypt(JsonConvert.SerializeObject(this.SessionKey), this.PhysicalKey);
+                this.SendMessage($"init{Helper.SocketMessageAttributeSeperator}{Name}{Helper.SocketMessageAttributeSeperator}{JsonConvert.SerializeObject(param)}{Helper.SocketMessageAttributeSeperator}{JsonConvert.SerializeObject(PhysicalKey)}{Helper.SocketMessageAttributeSeperator}{encSession}", EncryptionMode.RSA);
 
             }
             catch (Exception)
@@ -78,8 +86,8 @@ namespace SecurityProject0_client.Core.Services
         private void ListenToServer()
         {
             int i = 0;
-            string data = null;
-            byte[] bytes = new byte[256];
+            StringBuilder data = null;
+            byte[] bytes = new byte[Client.ReceiveBufferSize / 2];
 
             try
             {
@@ -90,18 +98,22 @@ namespace SecurityProject0_client.Core.Services
                     {
                         if (Stream.DataAvailable)
                         {
-                            data = "";
-                            while (Stream.DataAvailable && (i = Stream.Read(bytes, 0, bytes.Length)) != 0)
+                            data = new StringBuilder();
+                            var str = "";
+                            while ((Stream.DataAvailable || (str != string.Empty && !str.EndsWith(Helper.SocketMessageSplitter))) && (i = Stream.Read(bytes, 0, bytes.Length)) != 0)
                             {
-                                data += Encoding.Unicode.GetString(bytes, 0, i);
+                                str = Encoding.Unicode.GetString(bytes, 0, i);
+                                data.Append(str);
                             }
-                            var splited = data.Split(Helper.SocketMessageSplitter.ToCharArray());
+                            var splited = data.ToString().Split(new string[] { Helper.SocketMessageSplitter }, StringSplitOptions.RemoveEmptyEntries);
                             foreach (var item in splited)
                             {
                                 if (item == null || item == string.Empty)
                                     continue;
                                 ReceiveQueue.Enqueue(item);
                             }
+                            splited = null;
+                            data.Clear();
                         }
                         else
                             Task.Delay(100).Wait();
@@ -115,7 +127,22 @@ namespace SecurityProject0_client.Core.Services
                     {
                         SendQueue.TryDequeue(out var msg);
                         var bs = System.Text.Encoding.Unicode.GetBytes(msg);
-                        Stream.Write(bs, 0, bs.Length);
+
+                        int maxLength = Client.SendBufferSize / 2;
+                        int iterations = bs.Length / maxLength;
+                        StringBuilder stringBuilder = new StringBuilder();
+                        for (int ii = 0; ii <= iterations; ii++)
+                        {
+
+
+                            byte[] tempBytes = new byte[
+                                    (bs.Length - maxLength * ii > maxLength) ? maxLength :
+                                                  bs.Length - maxLength * ii];
+                            Buffer.BlockCopy(bs, maxLength * ii, tempBytes, 0,
+                                              tempBytes.Length);
+
+                            Stream.Write(tempBytes, 0, tempBytes.Length);
+                        }
                         Stream.Flush();
                     }
                 }
@@ -182,32 +209,81 @@ namespace SecurityProject0_client.Core.Services
 
             if (mode == EncryptionMode.RSA)
             {
-                using (var rsa = new RSACryptoServiceProvider())
-                {
-                    rsa.ImportParameters(this.ServerParams);
-                    var byteConverter = new UnicodeEncoding();
-                    string res = "";
-                    int maxLength = (128 - 44) / 2;
-                    var bytes = byteConverter.GetBytes(msg);
-                    int iterations = bytes.Length / maxLength;
-                    StringBuilder stringBuilder = new StringBuilder();
-                    for (int i = 0; i <= iterations; i++)
-                    {
-                        byte[] tempBytes = new byte[
-                                (bytes.Length - maxLength * i > maxLength) ? maxLength :
-                                              bytes.Length - maxLength * i];
-                        Buffer.BlockCopy(bytes, maxLength * i, tempBytes, 0,
-                                          tempBytes.Length);
-                        byte[] encryptedBytes = rsa.Encrypt(tempBytes, true);
+                msg += Helper.MacSeperator + Helper.RSASign(msg, this.RSAParams);
+                msg = Helper.RSAEncrypt(msg, this.ServerParams);
+            }
+            if (mode == EncryptionMode.AES)
+            {
+                msg += Helper.MacSeperator + Helper.RSASign(msg, this.RSAParams);
+                var buffer = new StringBuilder();
+                var maxSize = 100;
+                int iters = (int)Math.Ceiling(1f * msg.Length / maxSize);
 
-                        Array.Reverse(encryptedBytes);
-                        stringBuilder.Append(Convert.ToBase64String(encryptedBytes));
+                for (var i = 0; i < iters; i++)
+                {
+                    string item;
+                    if (i * maxSize + 100 > msg.Length)
+                        item = msg.Substring(i * maxSize);
+                    else
+                        item = msg.Substring(i * maxSize, 100);
+                    if (this.SessionKey.IsExpired)
+                    {
+                        buffer.Append(Helper.SessionKeySeperator);
+                        this.SessionKey = Helper.GenerateSessionKey();
+                        buffer.Append(Helper.AESEncrypt(JsonConvert.SerializeObject(this.SessionKey), this.PhysicalKey));
+                        buffer.Append(Helper.SessionKeySeperator);
+                        buffer.Append(Helper.AESChunkSeperator);
                     }
-                    msg = stringBuilder.ToString(); ;
+                    buffer.Append(Helper.AESEncrypt(item, this.SessionKey.AESKey));
+                    buffer.Append(Helper.AESChunkSeperator);
                 }
+                msg = buffer.ToString();
             }
 
             this.SendQueue.Enqueue(encryptionIndicator + msg + Helper.SocketMessageSplitter);
+        }
+
+        public string Decrypt(string input)
+        {
+            if (input.StartsWith("non"))
+            {
+                return input.Substring(13);
+            }
+            if (input.StartsWith("rsa"))
+            {
+                input = input.Substring(13);
+                input = Helper.RSADecrypt(input, this.RSAParams);
+                var split = input.Split(new string[] { Helper.MacSeperator }, StringSplitOptions.RemoveEmptyEntries);
+                var data = split[0];
+                var hash = split[1];
+                if (!Helper.RSAVerify(hash, data, this.ServerParams))
+                    return "";
+                return data;
+            }
+            else
+            {
+                input = input.Substring(13);
+                var buffer = new StringBuilder();
+                var aesChunk = input.Split(new string[] { Helper.AESChunkSeperator }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var item in aesChunk)
+                {
+                    if (item.StartsWith(Helper.SessionKeySeperator) && item.EndsWith(Helper.SessionKeySeperator))
+                    {
+                        var sepLen = Helper.SessionKeySeperator.Length;
+                        var encSession = item.Substring(sepLen, item.Length - sepLen * 2);
+                        this.SessionKey = JsonConvert.DeserializeObject<SessionKey>(Helper.AESDecrypt(encSession, this.PhysicalKey));
+                        continue;
+                    }
+                    buffer.Append(Helper.AESDecrypt(item, this.SessionKey.AESKey));
+                }
+                input = buffer.ToString();
+                var split = input.Split(new string[] { Helper.MacSeperator }, StringSplitOptions.RemoveEmptyEntries);
+                var data = split[0];
+                var hash = split[1];
+                if (!Helper.RSAVerify(hash, data, this.ServerParams))
+                    return "";
+                return data;
+            }
         }
 
         public void SendMessage(string msg)
@@ -229,35 +305,5 @@ namespace SecurityProject0_client.Core.Services
             send.Connect("127.0.0.1");
         }
 
-        private string Decrypt(string input)
-        {
-            if (input.StartsWith("non"))
-            {
-                return input.Substring(13);
-            }
-            if (input.StartsWith("rsa"))
-            {
-                using (var rsa = new RSACryptoServiceProvider())
-                {
-                    rsa.ImportParameters(this.RSAParams);
-                    var msg = input.Substring(13);
-                    string res = "";
-                    var byteConverter = new UnicodeEncoding();
-                    byte[] bytes = new byte[128];
-                    var dwKeySize = rsa.KeySize;
-                    int base64BlockSize = ((dwKeySize / 8) % 3 != 0) ? (((dwKeySize / 8) / 3) * 4) + 4 : ((dwKeySize / 8) / 3) * 4;
-                    int iterations = msg.Length / base64BlockSize;
-                    for (int i = 0; i < iterations; i++)
-                    {
-                        byte[] encryptedBytes = Convert.FromBase64String(
-                             msg.Substring(base64BlockSize * i, base64BlockSize));
-                        Array.Reverse(encryptedBytes);
-                        res += byteConverter.GetString(rsa.Decrypt(encryptedBytes, true));
-                    }
-                    return res;
-                }
-            }
-            return "";
-        }
     }
 }

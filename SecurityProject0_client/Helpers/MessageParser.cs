@@ -23,7 +23,9 @@ namespace SecurityProject0_client.Core.Services
         public static Dictionary<int, Contact> Contacts = new Dictionary<int, Contact>();
         public static event MessageEventHandler OnMessage;
         public static event PhysicalKeyChangeHandler OnPhysicalKeyChanged;
+        public static event FileSaveHandler OnNewFile;
 
+        public delegate void FileSaveHandler(File f);
         public delegate void PhysicalKeyChangeHandler(string key);
         public delegate void MessageEventHandler(Message msg, int sender, int receiver);
 
@@ -61,7 +63,7 @@ namespace SecurityProject0_client.Core.Services
             if (!int.TryParse(splited[1], out var id))
                 return;
             Id = id;
-            //OnPhysicalKeyChanged?.Invoke(splited[2]);
+            OnPhysicalKeyChanged?.Invoke(splited[2]);
             PhysicalKey = splited[2];
             User = Singleton<UserDataService>.Instance.GetUserData();
             var param = JsonConvert.DeserializeObject<RSAParameters>(splited[2]);
@@ -120,7 +122,7 @@ namespace SecurityProject0_client.Core.Services
                     _rawMessage = data,
                     FromMe = fromMe
                 };
-                (mess as File).Save();
+                OnNewFile?.Invoke(mess as File);
             }
             if (fromMe)
                 Contacts[sessionId].Messages.Add(mess);

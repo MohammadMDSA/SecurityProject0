@@ -16,6 +16,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Linq;
 using Windows.Storage.Pickers;
+using SecurityProject0_client.Helpers;
 
 namespace SecurityProject0_client.Views
 {
@@ -35,11 +36,12 @@ namespace SecurityProject0_client.Views
 
         public readonly DependencyProperty MasterMenuItemProperty = DependencyProperty.Register("MasterMenuItem", typeof(Contact), typeof(ChatsDetailControl), new PropertyMetadata(null, OnMasterMenuItemPropertyChanged));
         public Action<IReadOnlyList<IStorageItem>> GetStorageItem => ((items) => OnGetStorageItem(items));
-        
+
         public ChatsDetailControl()
         {
             InitializeComponent();
             MessageParser.OnMessage += MessageParser_OnMessage;
+            MessageParser.OnNewFile += FileSaver.SaveFile;
             MessageParser.OnPhysicalKeyChanged += MessageParser_OnPhysicalKeyChanged;
             Binding b = new Binding();
             b.Source = Messages;
@@ -49,9 +51,12 @@ namespace SecurityProject0_client.Views
             OnMasterChange += ChatsDetailControl_OnMasterChange;
         }
 
-        private void MessageParser_OnPhysicalKeyChanged(string key)
+        private async void MessageParser_OnPhysicalKeyChanged(string key)
         {
-            ContactPhisical.Text = key;
+            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            {
+                //ContactPhisical.Text = key;
+            });
         }
 
         public async void OnGetStorageItem(IReadOnlyList<IStorageItem> items)
@@ -111,7 +116,7 @@ namespace SecurityProject0_client.Views
 
         private void SubmitKey_Click(object sender, RoutedEventArgs e)
         {
-            MasterMenuItem.Secret = ContactPhisical.Text;
+            //MasterMenuItem.Secret = ContactPhisical.Text;
         }
 
         private void SendButton_Click(object sender, RoutedEventArgs e)
@@ -126,8 +131,9 @@ namespace SecurityProject0_client.Views
             {
                 try
                 {
-
-                    var file = await FileIO.ReadTextAsync(item as IStorageFile, Windows.Storage.Streams.UnicodeEncoding.Utf16LE);
+                    var bytes = await (item as StorageFile).ReadBytesAsync();
+                    var file = Convert.ToBase64String(bytes);
+                    //var file = await FileIO.ReadTextAsync(item as IStorageFile, Windows.Storage.Streams.UnicodeEncoding.Utf8);
                     MessageSender.Instance.SendMessage($"file{Helper.SocketMessageAttributeSeperator}{MasterMenuItem.Id}{Helper.SocketMessageAttributeSeperator}{item.Name};{file}{Helper.SocketMessageAttributeSeperator}{DateTime.Now.Ticks}");
                 }
                 catch (Exception) { }
@@ -149,6 +155,23 @@ namespace SecurityProject0_client.Views
             {
                 await SendFiles(files);
             }
+        }
+
+        private void EncType_Toggled(object sender, RoutedEventArgs e)
+        {
+            //string type;
+            //if (EncType.IsOn)
+            //{
+            //    MessageSender.Instance.EncryptionMode = EncryptionMode.AES;
+            //    type = "sym";
+            //}
+            //else
+            //{
+            //    type = "asy";
+            //    MessageSender.Instance.EncryptionMode = EncryptionMode.RSA;
+            //}
+            //MessageSender.Instance.SendMessage($"encryption{Helper.SocketMessageAttributeSeperator}{type}", EncryptionMode.RSA);
+
         }
     }
 }
