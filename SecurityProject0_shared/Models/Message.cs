@@ -41,6 +41,17 @@ namespace SecurityProject0_shared.Models
             return RawMessage;
         }
 
+        public override bool Equals(object obj)
+        {
+            if (!this.GetType().Equals(obj.GetType()))
+                return false;
+            return this.Id == (obj as Message).Id;
+        }
+        public override int GetHashCode()
+        {
+            return this.Id;
+        }
+
     }
 
     public enum EncryptionMode

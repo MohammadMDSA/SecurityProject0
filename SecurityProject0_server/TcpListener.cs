@@ -145,6 +145,7 @@ namespace SecurityProject0_server
                         return;
                     InitClient(id, splited[1], splited[2], splited[3], splited[4]);
                     break;
+
                 case "disconnect":
                     Disconnect(id);
                     break;
@@ -156,6 +157,15 @@ namespace SecurityProject0_server
                         return;
                     SendMessage(receiver, id, splited[2], ticks);
                     break;
+
+                case "edit_message":
+                    if (splited.Length < 3)
+                        return;
+                    if (!int.TryParse(splited[1], out receiver) || !int.TryParse(splited[3], out var messageId))
+                        return;
+                    EditMessage(receiver, id, splited[2], messageId);
+                    break;
+
                 case "file":
                     if (splited.Length < 4)
                         return;
@@ -163,11 +173,21 @@ namespace SecurityProject0_server
                         return;
                     SendMessage(receiver, id, splited[2], ticks, true);
                     break;
+
+                case "delete":
+                    if (splited.Length < 3)
+                        return;
+                    if (!int.TryParse(splited[1], out receiver) || !int.TryParse(splited[2], out messageId))
+                        return;
+                    DeleteMessage(receiver, id, messageId);
+                    break;
+
                 case "encryption":
                     if (splited.Length < 2)
                         return;
                     SetEncryptionType(id, splited[1]);
                     break;
+
                 default:
                     break;
             }
@@ -192,6 +212,27 @@ namespace SecurityProject0_server
             var messageId = ren.GetNewMessageId(res.Id);
             res.GetNewMessageId(ren.Id);
             var msg = $"{command}{Helper.SocketMessageAttributeSeperator}{receiver}{Helper.SocketMessageAttributeSeperator}{sender}{Helper.SocketMessageAttributeSeperator}{message}{Helper.SocketMessageAttributeSeperator}{time}{Helper.SocketMessageAttributeSeperator}{messageId}";
+            ren.Send(msg);
+            res.Send(msg);
+        }
+
+        private void EditMessage(int receiver, int sender, string message, int messageId)
+        {
+            var command = "edit_message";
+            var ren = Clients[sender];
+            var res = Clients[receiver];
+            res.GetNewMessageId(ren.Id);
+            var msg = $"{command}{Helper.SocketMessageAttributeSeperator}{receiver}{Helper.SocketMessageAttributeSeperator}{sender}{Helper.SocketMessageAttributeSeperator}{message}{Helper.SocketMessageAttributeSeperator}{messageId}";
+            ren.Send(msg);
+            res.Send(msg);
+        }
+
+        private void DeleteMessage(int receiver, int sender, int messageId)
+        {
+            var command = "delete";
+            var ren = Clients[sender];
+            var res = Clients[receiver];
+            var msg = $"{command}{Helper.SocketMessageAttributeSeperator}{receiver}{Helper.SocketMessageAttributeSeperator}{sender}{Helper.SocketMessageAttributeSeperator}{messageId}";
             ren.Send(msg);
             res.Send(msg);
         }

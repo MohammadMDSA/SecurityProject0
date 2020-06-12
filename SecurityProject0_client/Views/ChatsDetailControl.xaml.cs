@@ -20,6 +20,7 @@ using SecurityProject0_client.Helpers;
 using Microsoft.Toolkit.Uwp.UI.Extensions;
 using Windows.Foundation;
 using System.Reflection;
+using Windows.Storage.Search;
 
 namespace SecurityProject0_client.Views
 {
@@ -30,6 +31,8 @@ namespace SecurityProject0_client.Views
 
         private UserDataService UserDataService = Singleton<UserDataService>.Instance;
         private ObservableCollection<Message> Messages = new ObservableCollection<Message>();
+        private ContextualMessageOperation CurrentState;
+        private Message ContextMessageData;
 
         public Contact MasterMenuItem
         {
@@ -44,7 +47,9 @@ namespace SecurityProject0_client.Views
         {
             InitializeComponent();
             MessageParser.OnMessage += MessageParser_OnMessage;
+            MessageParser.OnEdit += MessageParser_OnEdit;
             MessageParser.OnNewFile += FileSaver.SaveFile;
+            MessageParser.OnDelete += MessageParser_OnDelete;
             MessageParser.OnPhysicalKeyChanged += MessageParser_OnPhysicalKeyChanged;
             Binding b = new Binding();
             b.Source = Messages;
@@ -53,6 +58,7 @@ namespace SecurityProject0_client.Views
             Loaded += ChatsDetailControl_Loaded;
             OnMasterChange += ChatsDetailControl_OnMasterChange;
             ChatList.ContainerContentChanging += ChatList_ContainerContentChanging;
+            CurrentState = ContextualMessageOperation.None;
         }
 
         private void ChatList_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
@@ -85,6 +91,8 @@ namespace SecurityProject0_client.Views
             {
                 Messages.Add(item);
             }
+            SetFocusToInput();
+
         }
 
         private void ChatsDetailControl_Loaded(object sender, RoutedEventArgs e)
@@ -94,6 +102,46 @@ namespace SecurityProject0_client.Views
             {
                 Messages.Add(item);
             }
+            SetFocusToInput();
+
+        }
+
+        private async void MessageParser_OnDelete(int msgId, int sender, int receiver)
+        {
+            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            {
+                if (sender != MasterMenuItem.Id && receiver != MasterMenuItem.Id)
+                    return;
+                var idx = -1;
+                for (var i = 0; i < Messages.Count; i++)
+                {
+                    if(Messages[i].Id == msgId)
+                    {
+                        idx = i;
+                        break;
+                    }
+                }
+
+                if (idx == -1)
+                {
+                    return;
+                }
+
+                Messages.RemoveAt(idx);
+
+            });
+        }
+
+        private async void MessageParser_OnEdit(Message msg, int sender, int receiver)
+        {
+            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            {
+                if (sender != MasterMenuItem.Id && receiver != MasterMenuItem.Id)
+                    return;
+                var idx = Messages.IndexOf(msg);
+                Messages[idx] = msg;
+
+            });
         }
 
         private async void MessageParser_OnMessage(Message msg, int sender, int receiver)
@@ -102,6 +150,7 @@ namespace SecurityProject0_client.Views
             {
                 if (sender != MasterMenuItem.Id && receiver != MasterMenuItem.Id)
                     return;
+
                 Messages.Add(msg);
 
             });
@@ -117,7 +166,10 @@ namespace SecurityProject0_client.Views
         private void TextBox_KeyUp(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
         {
             if (e.Key == Windows.System.VirtualKey.Enter)
+            {
                 SendText();
+                SetFocusToInput();
+            }
             e.Handled = true;
         }
 
@@ -125,7 +177,23 @@ namespace SecurityProject0_client.Views
         {
             var message = MessageInput.Text;
             MessageInput.Text = string.Empty;
-            MessageSender.Instance.SendMessage($"message{Helper.SocketMessageAttributeSeperator}{MasterMenuItem.Id}{Helper.SocketMessageAttributeSeperator}{message}{Helper.SocketMessageAttributeSeperator}{DateTime.Now.Ticks}");
+            this.MessageContextGrid.Visibility = Visibility.Collapsed;
+            switch (CurrentState)
+            {
+                case ContextualMessageOperation.None:
+                    MessageSender.Instance.SendMessage($"message{Helper.SocketMessageAttributeSeperator}{MasterMenuItem.Id}{Helper.SocketMessageAttributeSeperator}{message}{Helper.SocketMessageAttributeSeperator}{DateTime.Now.Ticks}");
+                    break;
+                case ContextualMessageOperation.Edit:
+                    MessageSender.Instance.SendMessage($"edit_message{Helper.SocketMessageAttributeSeperator}{MasterMenuItem.Id}{Helper.SocketMessageAttributeSeperator}{message}{Helper.SocketMessageAttributeSeperator}{ContextMessageData.Id}");
+                    break;
+                case ContextualMessageOperation.Reply:
+                    break;
+                default:
+                    break;
+            }
+            CurrentState = ContextualMessageOperation.None;
+            SetFocusToInput();
+
         }
 
         private void SubmitKey_Click(object sender, RoutedEventArgs e)
@@ -141,18 +209,20 @@ namespace SecurityProject0_client.Views
 
         private async Task SendFiles(IReadOnlyList<IStorageItem> items)
         {
+
+            this.MessageContextGrid.Visibility = Visibility.Collapsed;
             foreach (var item in items)
             {
                 try
                 {
                     var bytes = await (item as StorageFile).ReadBytesAsync();
                     var file = Convert.ToBase64String(bytes);
-                    //var file = await FileIO.ReadTextAsync(item as IStorageFile, Windows.Storage.Streams.UnicodeEncoding.Utf8);
                     MessageSender.Instance.SendMessage($"file{Helper.SocketMessageAttributeSeperator}{MasterMenuItem.Id}{Helper.SocketMessageAttributeSeperator}{item.Name};{file}{Helper.SocketMessageAttributeSeperator}{DateTime.Now.Ticks}");
                 }
                 catch (Exception) { }
 
             }
+            CurrentState = ContextualMessageOperation.None;
         }
 
         private async void AttachButton_Click(object sender, RoutedEventArgs e)
@@ -181,5 +251,52 @@ namespace SecurityProject0_client.Views
             ChatViewScroller.ChangeView(null, position.Y, null, false);
         }
 
+        private void ChatMessage_OnEdit(Controls.ChatMessage sender, Message args)
+        {
+            this.CurrentState = ContextualMessageOperation.Edit;
+            ContextType.Text = "Edit:";
+            ContextMessage.Text = args.RawMessage;
+            MessageContextGrid.Visibility = Visibility.Visible;
+            MessageInput.Text = args.RawMessage;
+            ContextMessageData = args;
+            MessageInput.Focus(FocusState.Programmatic);
+            SetFocusToInput();
+
+        }
+
+        private void OnContextCancel(object sender, RoutedEventArgs e)
+        {
+            MessageContextGrid.Visibility = Visibility.Collapsed;
+            this.CurrentState = ContextualMessageOperation.None;
+            SetFocusToInput();
+        }
+
+        private void SetFocusToInput()
+        {
+
+            MessageInput.Focus(FocusState.Programmatic);
+            MessageInput.Select(MessageInput.Text.Length, 0);
+        }
+
+        private async void ChatMessage_OnDelete(Controls.ChatMessage sender, Message args)
+        {
+            var approval = new ContentDialog
+            {
+                Title = "Delete Message",
+                Content = "Are you sure to delete the message?",
+                PrimaryButtonText = "Yes",
+                SecondaryButtonText = "No"
+            };
+
+            var result = await approval.ShowAsync();
+            MessageSender.Instance.SendMessage($"delete{Helper.SocketMessageAttributeSeperator}{MasterMenuItem.Id}{Helper.SocketMessageAttributeSeperator}{args.Id}");
+        }
+
+        public enum ContextualMessageOperation
+        {
+            None,
+            Edit,
+            Reply,
+        }
     }
 }

@@ -14,6 +14,7 @@
         <help:DateTimeConverter x:Key="MessageDateConverter"/>
     </UserControl.Resources>
     <RelativePanel>
+
         <Grid x:Name="Info" Padding="10" Background="{StaticResource SystemControlPageBackgroundChromeLowBrush}" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignLeftWithPanel="true" RelativePanel.AlignTopWithPanel="True">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -37,9 +38,9 @@
                 
             </Grid>
         </Grid>
-        <ScrollViewer x:Name="ChatViewScroller" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignRightWithPanel="True" RelativePanel.Above="InputHolderPane" RelativePanel.Below="Info" AllowDrop="True" >
+        <ScrollViewer x:Name="ChatViewScroller" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignRightWithPanel="True" RelativePanel.Above="MessageContextGrid" RelativePanel.Below="Info" AllowDrop="True" >
             <dd:DragDropService.Configuration>
-                <dd:DropConfiguration  DropStorageItemsAction="{x:Bind GetStorageItem}"/>
+                <dd:DropConfiguration DropStorageItemsAction="{x:Bind GetStorageItem}"/>
             </dd:DragDropService.Configuration>
             <dd:DragDropService.VisualConfiguration>
                 <dd:VisualDropConfiguration Caption="Send" IsContentVisible="False" DropOverImage="Send"/>
@@ -52,11 +53,29 @@
                 </ListView.ItemContainerStyle>
                 <ListView.ItemTemplate>
                     <DataTemplate>
-                        <con:ChatMessage Message="{Binding}"/>
+                        <con:ChatMessage Message="{Binding}" OnEdit="ChatMessage_OnEdit" OnDelete="ChatMessage_OnDelete"/>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
         </ScrollViewer>
+        <Grid x:Name="MessageContextGrid" Visibility="Collapsed" Height="40" Margin="5,5,5,5" CornerRadius="3" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignRightWithPanel="True" RelativePanel.Above="InputHolderPane" BorderThickness="1" BorderBrush="{StaticResource SystemAccentColor}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="50"/>
+                <ColumnDefinition Width="45"/>
+            </Grid.ColumnDefinitions>
+            <Grid.TranslationTransition>
+                <Vector3Transition/>
+            </Grid.TranslationTransition>
+            <Grid.Transitions>
+                <TransitionCollection>
+                    <PopupThemeTransition/>
+                </TransitionCollection>
+            </Grid.Transitions>
+            <TextBlock x:Name="ContextType" Margin="5" Grid.Column="0" Text="Reply:" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="{StaticResource SystemAccentColor}"/>
+            <TextBlock x:Name="ContextMessage" Margin="5" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" TextWrapping="Wrap" MaxLines="1"/>
+            <Button HorizontalAlignment="Center" Margin="5" Grid.Column="2" FontFamily="Segoe MDL2 Assets" Content="&#xE8BB;" Click="OnContextCancel"/>
+        </Grid>
         <RelativePanel Margin="5" x:Name="InputHolderPane" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignBottomWithPanel="True">
             <TextBox x:Name="MessageInput" RelativePanel.AlignLeftWithPanel="True" RelativePanel.LeftOf="AttachButton" RelativePanel.AlignBottomWithPanel="True" RelativePanel.AlignTopWithPanel="True" TextWrapping="Wrap" KeyUp="TextBox_KeyUp" />
             <Button Margin="5,0,0,0" x:Name="AttachButton" RelativePanel.LeftOf="SendButton" RelativePanel.AlignBottomWithPanel="True" VerticalAlignment="Stretch" Click="AttachButton_Click">

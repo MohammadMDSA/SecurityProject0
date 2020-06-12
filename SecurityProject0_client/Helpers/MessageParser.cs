@@ -11,6 +11,7 @@ using SecurityProject0_client.Services;
 using Windows.Web.Http;
 using Newtonsoft.Json;
 using System.Security.Cryptography;
+using System.Data;
 
 namespace SecurityProject0_client.Core.Services
 {
@@ -22,12 +23,15 @@ namespace SecurityProject0_client.Core.Services
 
         public static Dictionary<int, Contact> Contacts = new Dictionary<int, Contact>();
         public static event MessageEventHandler OnMessage;
+        public static event MessageEventHandler OnEdit;
         public static event PhysicalKeyChangeHandler OnPhysicalKeyChanged;
         public static event FileSaveHandler OnNewFile;
+        public static event MessageDeleteHandler OnDelete;
 
         public delegate void FileSaveHandler(File f);
         public delegate void PhysicalKeyChangeHandler(string key);
         public delegate void MessageEventHandler(Message msg, int sender, int receiver);
+        public delegate void MessageDeleteHandler(int msgId, int sender, int receiver);
 
         public static void Parse(string message)
         {
@@ -50,8 +54,14 @@ namespace SecurityProject0_client.Core.Services
                 case "message":
                     GetMessage(splited);
                     break;
+                case "edit_message":
+                    EditMessage(splited);
+                    break;
                 case "file":
                     GetMessage(splited, true);
+                    break;
+                case "delete":
+                    DeleteMessage(splited);
                     break;
                 default:
                     break;
@@ -102,7 +112,7 @@ namespace SecurityProject0_client.Core.Services
                 return;
             var fromMe = Id == senderId;
             Message mess = null;
-            if(!file)
+            if (!file)
                 mess = new Message(false, messageId)
                 {
                     DeliveryTime = new DateTime(ticks),
@@ -131,6 +141,55 @@ namespace SecurityProject0_client.Core.Services
 
             OnMessage?.Invoke(mess, sessionId, senderId);
 
+        }
+
+        public static void EditMessage(string[] splited)
+        {
+            if (splited.Length < 5)
+                return;
+            if (!int.TryParse(splited[1], out var sessionId) || !int.TryParse(splited[2], out var senderId) || !int.TryParse(splited[4], out var messageId))
+                return;
+            var fromMe = Id == senderId;
+            Message mess = null;
+
+            if (fromMe)
+            {
+                int idx = Contacts[sessionId].Messages.FindIndex((item) => item.Id == messageId);
+                mess = Contacts[sessionId].Messages[idx];
+            }
+            else
+            {
+                int idx = Contacts[senderId].Messages.FindIndex((item) => item.Id == messageId);
+                mess = Contacts[senderId].Messages[idx];
+            }
+
+            mess._rawMessage = splited[3];
+
+            OnEdit?.Invoke(mess, sessionId, senderId);
+
+        }
+
+        public static void DeleteMessage(string[] splited)
+        {
+            if (splited.Length < 4)
+                return;
+            if (!int.TryParse(splited[1], out var sessionId) || !int.TryParse(splited[2], out var senderId) || !int.TryParse(splited[3], out var messageId))
+                return;
+            var fromMe = Id == senderId;
+            Message mess = null;
+
+            if (fromMe)
+            {
+                int idx = Contacts[sessionId].Messages.FindIndex((item) => item.Id == messageId);
+                Contacts[sessionId].Messages.RemoveAt(idx);
+            }
+            else
+            {
+                int idx = Contacts[senderId].Messages.FindIndex((item) => item.Id == messageId);
+                Contacts[senderId].Messages.RemoveAt(idx);
+            }
+
+            OnDelete?.Invoke(messageId, senderId, sessionId);
         }
     }
 }

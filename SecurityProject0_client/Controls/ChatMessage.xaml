@@ -10,7 +10,6 @@
     d:DesignWidth="400">
 
     <Grid x:Name="Gr" Margin="20" HorizontalAlignment="Left" MaxWidth="500">
-
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup>
                 <VisualState>
@@ -24,6 +23,25 @@
                 </VisualState>
             </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
+        <Grid.ContextFlyout>
+            <MenuFlyout>
+                <MenuFlyoutItem Text="Reply" Click="MessageReply">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE97A;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="EditButton" Text="Edit" Click="MessageEdit">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE70F;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Delete" Click="MessageDelete">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE74D;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+            </MenuFlyout>
+        </Grid.ContextFlyout>
 
         <StackPanel Orientation="Vertical" x:Name="MessageGrid" Padding="20" Grid.Column="1" Background="{StaticResource SystemControlAcrylicWindowMediumHighBrush}">
             <TextBlock x:Name="MessageShower" TextWrapping="Wrap" Text="{x:Bind Message.RawMessage, Mode=OneWay}"/>
