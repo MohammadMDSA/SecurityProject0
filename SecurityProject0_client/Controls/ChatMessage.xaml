@@ -32,6 +32,7 @@
                 <TextBlock x:Name="FileNameShower" Margin="10,0,0,0" Text="" TextWrapping="Wrap"/>
             </StackPanel>
             <TextBlock HorizontalAlignment="Right" FontSize="11" Margin="0,10,0,0" VerticalAlignment="Bottom" Text="{x:Bind Message.DeliveryTime, Mode=OneWay}"/>
+            <!--<TextBlock Text="{x:Bind Message.Id, Mode=OneWay}"/>-->
         </StackPanel>
     </Grid>
 </UserControl>

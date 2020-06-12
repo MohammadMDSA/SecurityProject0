@@ -98,12 +98,12 @@ namespace SecurityProject0_client.Core.Services
         {
             if (splited.Length < 5)
                 return;
-            if (!int.TryParse(splited[1], out var sessionId) || !int.TryParse(splited[2], out var senderId) || !long.TryParse(splited[4], out var ticks))
+            if (!int.TryParse(splited[1], out var sessionId) || !int.TryParse(splited[2], out var senderId) || !long.TryParse(splited[4], out var ticks) || !int.TryParse(splited[5], out var messageId))
                 return;
             var fromMe = Id == senderId;
             Message mess = null;
             if(!file)
-                mess = new Message(false)
+                mess = new Message(false, messageId)
                 {
                     DeliveryTime = new DateTime(ticks),
                     _rawMessage = splited[3],
@@ -116,7 +116,7 @@ namespace SecurityProject0_client.Core.Services
                     return;
                 var fileName = dataSp[0];
                 var data = splited[3].Substring(fileName.Length + 1);
-                mess = new File(fileName)
+                mess = new File(fileName, messageId)
                 {
                     DeliveryTime = new DateTime(ticks),
                     _rawMessage = data,

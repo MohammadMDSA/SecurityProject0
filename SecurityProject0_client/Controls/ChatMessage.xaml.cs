@@ -27,7 +27,7 @@ namespace SecurityProject0_client.Controls
         {
             get
             {
-                var res = GetValue(MessageProperty) as Message ?? new Message(false);
+                var res = GetValue(MessageProperty) as Message ?? new Message(false, -1);
                 UpdateMessageType(res);
                 return res;
             }

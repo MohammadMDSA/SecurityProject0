@@ -12,7 +12,7 @@ namespace SecurityProject0_shared.Models
         public string Secret { get; set; }
         public SessionKey SessionKey { get; private set; }
         public List<Message> Messages { get;  set; }
-        public Message LastMessage { get => Messages.LastOrDefault() ?? new Message(false); }
+        public Message LastMessage { get => Messages.LastOrDefault() ?? new Message(false, -1); }
         public int Id { get; private set; }
 
         public Contact(string name, int id)

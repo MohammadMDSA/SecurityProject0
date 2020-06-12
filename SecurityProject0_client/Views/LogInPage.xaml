@@ -35,6 +35,7 @@
                 Style="{StaticResource TitleTextBlockStyle}" />
             <TextBox
                 x:Name="NameInput"
+                KeyUp="NameInput_KeyUp"
                 Grid.Row="1"
                 Margin="{StaticResource MediumTopMargin}" />
             <Button

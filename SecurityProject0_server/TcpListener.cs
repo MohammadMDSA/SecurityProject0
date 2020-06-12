@@ -189,7 +189,9 @@ namespace SecurityProject0_server
             var command = isFile ? "file" : "message";
             var ren = Clients[sender];
             var res = Clients[receiver];
-            var msg = $"{command}{Helper.SocketMessageAttributeSeperator}{receiver}{Helper.SocketMessageAttributeSeperator}{sender}{Helper.SocketMessageAttributeSeperator}{message}{Helper.SocketMessageAttributeSeperator}{time}";
+            var messageId = ren.GetNewMessageId(res.Id);
+            res.GetNewMessageId(ren.Id);
+            var msg = $"{command}{Helper.SocketMessageAttributeSeperator}{receiver}{Helper.SocketMessageAttributeSeperator}{sender}{Helper.SocketMessageAttributeSeperator}{message}{Helper.SocketMessageAttributeSeperator}{time}{Helper.SocketMessageAttributeSeperator}{messageId}";
             ren.Send(msg);
             res.Send(msg);
         }

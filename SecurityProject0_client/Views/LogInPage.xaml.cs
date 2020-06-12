@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using SecurityProject0_client.Core.Helpers;
 using SecurityProject0_client.Core.Services;
 using SecurityProject0_client.Helpers;
@@ -35,6 +36,11 @@ namespace SecurityProject0_client.Views
         }
 
         private async void OnLogIn(object sender, RoutedEventArgs e)
+        {
+            await Login();
+        }
+
+        private async Task Login()
         {
             IsBusy = true;
             StatusMessage = string.Empty;
@@ -72,5 +78,11 @@ namespace SecurityProject0_client.Views
         }
 
         private void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        private async void NameInput_KeyUp(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
+        {
+            if (e.Key == Windows.System.VirtualKey.Enter)
+                await Login();
+        }
     }
 }

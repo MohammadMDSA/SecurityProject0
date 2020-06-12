@@ -25,6 +25,7 @@ namespace SecurityProject0_server
         public AESKey PhysicalKey { get; set; }
         public SessionKey SessionKey { get; set; }
         public RSAParameters RSAParameters { get; set; }
+        private Dictionary<int, int> MessageCounter;
         private ConcurrentQueue<string> SendQueue;
         private ConcurrentQueue<string> ReceiveQueue;
         private NetworkStream Stream;
@@ -34,6 +35,7 @@ namespace SecurityProject0_server
 
         public Client(TcpClient client, NetworkStream stream, int id)
         {
+            MessageCounter = new Dictionary<int, int>();
             Disposed = false;
             this.Stream = stream;
             this.SendQueue = new ConcurrentQueue<string>();
@@ -262,6 +264,18 @@ namespace SecurityProject0_server
 
         }
 
+        public int GetNewMessageId(int targetId)
+        {
+            if(!MessageCounter.ContainsKey(targetId))
+            {
+                MessageCounter.Add(targetId, 0);
+                return 0;
+            }
+            var res = MessageCounter[targetId] + 1;
+            MessageCounter[targetId] = res;
+            return res;
+
+        }
 
     }
 }

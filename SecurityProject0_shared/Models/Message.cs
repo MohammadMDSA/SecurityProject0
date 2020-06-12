@@ -8,6 +8,7 @@ namespace SecurityProject0_shared.Models
     {
         public string _rawMessage;
 
+        public int Id { get; private set; }
         public bool FromMe { get; set; }
         public DateTime DeliveryTime { get; set; }
         public string EncryptedMessage { get; private set; }
@@ -23,10 +24,11 @@ namespace SecurityProject0_shared.Models
         }
         public bool IsDecrypted { get; private set; }
 
-        public Message(bool isFile)
+        public Message(bool isFile, int id)
         {
             this.IsDecrypted = false;
             this.IsFile = isFile;
+            this.Id = id;
         }
 
         private void Decrypt()

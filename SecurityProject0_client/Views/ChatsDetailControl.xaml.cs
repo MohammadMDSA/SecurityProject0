@@ -19,6 +19,7 @@ using Windows.Storage.Pickers;
 using SecurityProject0_client.Helpers;
 using Microsoft.Toolkit.Uwp.UI.Extensions;
 using Windows.Foundation;
+using System.Reflection;
 
 namespace SecurityProject0_client.Views
 {
@@ -97,12 +98,11 @@ namespace SecurityProject0_client.Views
 
         private async void MessageParser_OnMessage(Message msg, int sender, int receiver)
         {
-            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
+            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
             {
                 if (sender != MasterMenuItem.Id && receiver != MasterMenuItem.Id)
                     return;
                 Messages.Add(msg);
-                Task.Delay(200).Wait();
 
             });
         }
@@ -169,23 +169,6 @@ namespace SecurityProject0_client.Views
             {
                 await SendFiles(files);
             }
-        }
-
-        private void EncType_Toggled(object sender, RoutedEventArgs e)
-        {
-            //string type;
-            //if (EncType.IsOn)
-            //{
-            //    MessageSender.Instance.EncryptionMode = EncryptionMode.AES;
-            //    type = "sym";
-            //}
-            //else
-            //{
-            //    type = "asy";
-            //    MessageSender.Instance.EncryptionMode = EncryptionMode.RSA;
-            //}
-            //MessageSender.Instance.SendMessage($"encryption{Helper.SocketMessageAttributeSeperator}{type}", EncryptionMode.RSA);
-
         }
 
         public void ScrollToBottom()

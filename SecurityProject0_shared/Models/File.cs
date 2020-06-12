@@ -11,7 +11,7 @@ namespace SecurityProject0_shared.Models
         public string Path { get; set; }
         public bool IsSaved => !string.IsNullOrEmpty(Path) && System.IO.File.Exists(Path);
 
-        public File(string name) : base(true)
+        public File(string name, int id) : base(true, id)
         {
             this.Name = name;
         }
