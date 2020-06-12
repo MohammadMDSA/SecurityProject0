@@ -32,10 +32,11 @@ namespace SecurityProject0_client
 
         }
 
-        private async void Current_Suspending(object sender, Windows.ApplicationModel.SuspendingEventArgs e)
+        private void Current_Suspending(object sender, Windows.ApplicationModel.SuspendingEventArgs e)
         {
             var def = e.SuspendingOperation.GetDeferral();
-            await System.Threading.Tasks.Task.Run(() => { MessageSender.Instance.SendMessage("disconnect"); });
+            //await System.Threading.Tasks.Task.Run(() => { MessageSender.Instance.SendMessage("disconnect"); });
+            MessageSender.Instance.Dispose();
             def.Complete();
 
         }
