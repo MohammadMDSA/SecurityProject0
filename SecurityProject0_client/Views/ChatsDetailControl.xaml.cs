@@ -115,7 +115,7 @@ namespace SecurityProject0_client.Views
                 var idx = -1;
                 for (var i = 0; i < Messages.Count; i++)
                 {
-                    if(Messages[i].Id == msgId)
+                    if (Messages[i].Id == msgId)
                     {
                         idx = i;
                         break;
@@ -289,7 +289,8 @@ namespace SecurityProject0_client.Views
             };
 
             var result = await approval.ShowAsync();
-            MessageSender.Instance.SendMessage($"delete{Helper.SocketMessageAttributeSeperator}{MasterMenuItem.Id}{Helper.SocketMessageAttributeSeperator}{args.Id}");
+            if (result == ContentDialogResult.Primary)
+                MessageSender.Instance.SendMessage($"delete{Helper.SocketMessageAttributeSeperator}{MasterMenuItem.Id}{Helper.SocketMessageAttributeSeperator}{args.Id}");
         }
 
         public enum ContextualMessageOperation
