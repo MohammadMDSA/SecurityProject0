@@ -17,6 +17,8 @@ using System.Threading.Tasks;
 using System.Linq;
 using Windows.Storage.Pickers;
 using SecurityProject0_client.Helpers;
+using Microsoft.Toolkit.Uwp.UI.Extensions;
+using Windows.Foundation;
 
 namespace SecurityProject0_client.Views
 {
@@ -49,6 +51,16 @@ namespace SecurityProject0_client.Views
             ChatList.SetBinding(ListView.ItemsSourceProperty, b);
             Loaded += ChatsDetailControl_Loaded;
             OnMasterChange += ChatsDetailControl_OnMasterChange;
+            ChatList.ContainerContentChanging += ChatList_ContainerContentChanging;
+        }
+
+        private void ChatList_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
+        {
+            args.RegisterUpdateCallback((senderi, argsi) =>
+            {
+                ScrollToBottom();
+
+            });
         }
 
         private async void MessageParser_OnPhysicalKeyChanged(string key)
@@ -85,11 +97,13 @@ namespace SecurityProject0_client.Views
 
         private async void MessageParser_OnMessage(Message msg, int sender, int receiver)
         {
-            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
             {
                 if (sender != MasterMenuItem.Id && receiver != MasterMenuItem.Id)
                     return;
                 Messages.Add(msg);
+                Task.Delay(200).Wait();
+
             });
         }
 
@@ -173,5 +187,16 @@ namespace SecurityProject0_client.Views
             //MessageSender.Instance.SendMessage($"encryption{Helper.SocketMessageAttributeSeperator}{type}", EncryptionMode.RSA);
 
         }
+
+        public void ScrollToBottom()
+        {
+            var last = ChatList.ItemsPanelRoot.Children.LastOrDefault();
+            if (last is null || ((dynamic)last).Content is null)
+                return;
+            var transform = last.TransformToVisual((UIElement)ChatViewScroller.Content);
+            var position = transform.TransformPoint(new Point(0, 0));
+            ChatViewScroller.ChangeView(null, position.Y, null, false);
+        }
+
     }
 }
