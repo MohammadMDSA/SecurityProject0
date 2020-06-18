@@ -215,10 +215,10 @@ namespace SecurityProject0_server
 
 		public string Decrypt(string input)
 		{
-			if (input.StartsWith("non"))
-			{
-				return input.Substring(13);
-			}
+			//if (input.StartsWith("non"))
+			//{
+			//	return input.Substring(13);
+			//}
 			if (input.StartsWith("rsa"))
 			{
 				input = input.Substring(13);
